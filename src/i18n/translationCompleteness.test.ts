@@ -151,6 +151,12 @@ const IDENTICAL_OK: Record<string, string> = {
 
   // onboarding
   'onboarding.stageChain.side.chats': 'loanword "Chats", kept untranslated across the app (matches chats.list.title)',
+  'onboarding.stageChain.modules.hire': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'onboarding.stageChain.tag.showsAndBookings': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'onboarding.stageChain.tag.hireOrders': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'onboarding.stageChain.artist.hireName': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'onboarding.stageChain.org.datesName': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'onboarding.stageChain.org.hireName': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
 };
 
 describe('German catalog is translated (not English left in place)', () => {

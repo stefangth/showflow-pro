@@ -256,7 +256,7 @@ describe("GetRunningBoardV3", () => {
 
     renderBoardAt("page", "/get-running?step=artists");
 
-    expect(screen.getByText(/add an artist/i)).toBeInTheDocument();
+    expect(screen.getByText(/add a new artist/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /collapse/i })).toBeInTheDocument();
   });
 
@@ -286,7 +286,7 @@ describe("GetRunningBoardV3", () => {
 
     renderBoardAt("settings", "/settings?tab=get-running&step=artists");
 
-    expect(screen.queryByText(/add an artist/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/add a new artist/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /collapse/i })).not.toBeInTheDocument();
     expect(screen.getByTestId("phase-row-bookable")).toBeInTheDocument();
   });
@@ -317,7 +317,7 @@ describe("GetRunningBoardV3", () => {
       const { rerender } = renderBoard();
 
       fireEvent.click(screen.getByTestId("phase-row-bookable"));
-      expect(screen.getByText(/add an artist/i)).toBeInTheDocument();
+      expect(screen.getByText(/add a new artist/i)).toBeInTheDocument();
 
       // A background refetch: the roster now has artists, so `artists` flips done under
       // the viewer with no explicit save on this board.
@@ -325,7 +325,7 @@ describe("GetRunningBoardV3", () => {
       rerender(board);
 
       expect(screen.getByText(/skills for your parts/i)).toBeInTheDocument();
-      expect(screen.queryByText(/add an artist/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/add a new artist/i)).not.toBeInTheDocument();
     });
 
     it("does not bounce a viewer forward off a step that was already done when they opened it", () => {
@@ -339,11 +339,11 @@ describe("GetRunningBoardV3", () => {
       // with the same accessible name.
       const stepsNav = screen.getByRole("navigation", { name: /steps/i });
       fireEvent.click(within(stepsNav).getByRole("button", { name: /add your artists/i }));
-      expect(screen.getByText(/add an artist/i)).toBeInTheDocument();
+      expect(screen.getByText(/add a new artist/i)).toBeInTheDocument();
 
       rerender(board);
 
-      expect(screen.getByText(/add an artist/i)).toBeInTheDocument();
+      expect(screen.getByText(/add a new artist/i)).toBeInTheDocument();
       expect(screen.queryByText(/skills for your parts/i)).not.toBeInTheDocument();
     });
 

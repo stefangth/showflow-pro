@@ -19,23 +19,29 @@
       "blocking_other": "Das erledigst du, es dauert etwa {{minutes}} Minuten. Sonst blockiert hier nichts, und nichts hier hindert dich, den Rest der App zu nutzen.",
       "ready": "Alles, was deine erste Anfrage blockiert, ist erledigt. Der Rest dieser Liste lohnt sich noch, hält dich aber nicht mehr auf.",
       "complete": "Jede Aufgabe hier ist erledigt. Schau jederzeit in den Einstellungen vorbei, falls sich etwas ändert.",
-      "producer": "Das ist hier, damit du weißt, warum Termine leer aussieht, nicht damit du alles davon lösen kannst."
+      "producer": "Das ist hier, damit du weißt, warum {{ShowDates}} leer aussieht, nicht damit du alles davon lösen kannst."
     },
-    "datesWithoutCity_one": "1 Termin hat noch keine Stadt, daher kann die Engine ihn nicht anfragen.",
-    "datesWithoutCity_other": "{{count}} Termine haben noch keine Stadt, daher kann die Engine sie nicht anfragen.",
-    "datesWithoutCityLink": "In Terminen beheben",
-    "datesWithoutCityUnknown": "Wir konnten nicht prüfen, welche Termine noch eine Stadt brauchen. Lade neu oder schau selbst in den Terminen nach."
+    "datesWithoutCity_one": "$t(getRunning:header.datesWithoutCity_{{kind}}_one)",
+    "datesWithoutCity_production_one": "1 Termin hat noch keine Stadt, daher kann die Engine ihn nicht anfragen.",
+    "datesWithoutCity_staffing_one": "1 Schicht hat noch keine Stadt, daher kann die Engine sie nicht anfragen.",
+    "datesWithoutCity_other": "{{count}} {{ShowDates}} haben noch keine Stadt, daher kann die Engine sie nicht anfragen.",
+    "datesWithoutCityLink": "$t(getRunning:header.datesWithoutCityLink_{{kind}})",
+    "datesWithoutCityLink_production": "In Terminen beheben",
+    "datesWithoutCityLink_staffing": "In Schichten beheben",
+    "datesWithoutCityUnknown": "$t(getRunning:header.datesWithoutCityUnknown_{{kind}})",
+    "datesWithoutCityUnknown_production": "Wir konnten nicht prüfen, welche Termine noch eine Stadt brauchen. Lade neu oder schau selbst in den Terminen nach.",
+    "datesWithoutCityUnknown_staffing": "Wir konnten nicht prüfen, welche Schichten noch eine Stadt brauchen. Lade neu oder schau selbst in den Schichten nach."
   },
   "nothingToSetUp": {
     "title": "Nichts einzurichten",
-    "body": "Für diesen Arbeitsbereich ist noch kein Modul eingeschaltet, das eine Einrichtung braucht. Schau vorbei, sobald die Booking Engine oder Verträge eingeschaltet werden."
+    "body": "Für diesen Arbeitsbereich ist noch kein Modul eingeschaltet, das eine Einrichtung braucht. Schau vorbei, sobald die Booking Engine oder {{HireOrders}} eingeschaltet werden."
   },
   "progress": {
     "title": "Einrichtung",
     "of": "von {{total}} erledigt",
     "module": {
       "booking": "Booking Engine",
-      "hireOrders": "Verträge",
+      "hireOrders": "{{HireOrders}}",
       "on": "An",
       "off": "Aus"
     },
@@ -43,7 +49,7 @@
   },
   "phases": {
     "get_dates": {
-      "title": "Termine reinholen",
+      "title": "{{ShowDates}} reinholen",
       "status": {
         "complete": "Läuft",
         "active": "In Arbeit",
@@ -67,7 +73,7 @@
         "active": "In Arbeit",
         "dormant": "Blockiert noch nichts"
       },
-      "note": "Wird vor dem ersten Vertrag gebraucht",
+      "note": "Wird vor dem ersten {{hireOrder}} gebraucht",
       "doItNow": "Jetzt erledigen"
     },
     "counts": {
@@ -99,139 +105,187 @@
       "settingsLink": {
         "flow": "Booking Flow in den Einstellungen ändern (Booking Engine)",
         "timing": "Anfragezeitpunkt in den Einstellungen ändern (Booking Engine)",
-        "ladder": "Besetzungen in den Einstellungen reihen (Besetzung und Abdeckung)",
-        "eligibility": "Besetzungen in den Einstellungen verknüpfen (Besetzung und Abdeckung)",
-        "letterhead": "Briefkopf in den Einstellungen setzen (Verträge)",
-        "terms": "Bedingungen in den Einstellungen setzen (Verträge)",
-        "countersign": "Gegenzeichnung in den Einstellungen setzen (Verträge)"
+        "ladder": "{{Casts}} in den Einstellungen reihen ({{Cast}} und Abdeckung)",
+        "eligibility": "{{Casts}} in den Einstellungen verknüpfen ({{Cast}} und Abdeckung)",
+        "letterhead": "Briefkopf in den Einstellungen setzen ({{HireOrders}})",
+        "terms": "Bedingungen in den Einstellungen setzen ({{HireOrders}})",
+        "countersign": "Gegenzeichnung in den Einstellungen setzen ({{HireOrders}})"
       }
     },
     "footerNote": {
       "dates": "Sync läuft stündlich",
       "slots": "Wird automatisch gespeichert",
       "flow": "Änderung wird protokolliert",
-      "people": "Keine E-Mail, bevor du zu einem Datum anfragst",
+      "people": "$t(getRunning:panel.footerNote.people_{{kind}})",
+      "people_production": "Keine E-Mail, bevor du zu einem Termin anfragst",
+      "people_staffing": "Keine E-Mail, bevor du zu einer Schicht anfragst",
       "ladder": "Reihenfolge ist pro Stadt",
-      "eligibility": "Die eigene Besetzung einer Produktion schlägt die Stadtrangfolge",
+      "eligibility": "$t(getRunning:panel.footerNote.eligibility_{{kind}})",
+      "eligibility_production": "Die eigene Besetzung einer Produktion schlägt die Stadtrangfolge",
+      "eligibility_staffing": "Das eigene Team eines Kunden schlägt die Stadtrangfolge",
       "timing": "Gilt für die heutige tägliche Sendung",
       "team": "Sie erhalten eine E-Mail-Einladung",
-      "letterhead": "Wird auf jedem Vertrag verwendet",
-      "terms": "Wird auf jedem Vertrag verwendet",
-      "countersign": "Wird auf jedem Vertrag verwendet"
+      "letterhead": "Wird auf jedem {{hireOrder}} verwendet",
+      "terms": "Wird auf jedem {{hireOrder}} verwendet",
+      "countersign": "Wird auf jedem {{hireOrder}} verwendet"
     },
     "body": {
       "dates": {
         "connectedBadge": "Airtable verbunden",
         "syncedAt": "Synchronisiert {{time}}",
-        "recordCount_one": "{{count}} Termin",
-        "recordCount_other": "{{count}} Termine",
+        "recordCount_one": "{{count}} {{ShowDate}}",
+        "recordCount_other": "{{count}} {{ShowDates}}",
         "heldLine_one": "{{count}} Eintrag beim letzten Lauf zurückgehalten",
         "heldLine_other": "{{count}} Einträge beim letzten Lauf zurückgehalten",
         "resolve": "Lösen",
-        "emptyLine": "Noch keine Termine. Verbinde Airtable oder füge eine Produktion von Hand hinzu.",
+        "emptyLine": "$t(getRunning:panel.body.dates.emptyLine_{{kind}})",
+        "emptyLine_production": "Noch keine Termine. Verbinde Airtable oder füge eine Produktion von Hand hinzu.",
+        "emptyLine_staffing": "Noch keine Schichten. Verbinde Airtable oder füge einen Kunden von Hand hinzu.",
         "setup": "Airtable Sync einrichten",
         "dividerOr": "oder von Hand hinzufügen",
-        "newShow": "Neue Produktion",
-        "unlocks": "Jeder folgende Schritt liest aus diesen Terminen: Besetzungsplan, Rangfolge und wer angefragt werden kann.",
+        "newShow": "$t(getRunning:panel.body.dates.newShow_{{kind}})",
+        "newShow_production": "Neue Produktion",
+        "newShow_staffing": "Neuer Kunde",
+        "unlocks": "$t(getRunning:panel.body.dates.unlocks_{{kind}})",
+        "unlocks_production": "Jeder folgende Schritt liest aus diesen Terminen: Aufteilung der Positionen, Rangfolge und wer angefragt werden kann.",
+        "unlocks_staffing": "Jeder folgende Schritt liest aus diesen Schichten: Aufteilung der Positionen, Rangfolge und wer angefragt werden kann.",
         "airtableDialogTitle": "Airtable Sync"
       },
       "team": {
         "emailLabel": "Per E-Mail einladen",
         "emailPlaceholder": "name@firma.de",
         "send": "Einladung senden",
-        "unlocks": "Dein Production Team kann Buchungen übernehmen, sobald Anfragen reinkommen."
+        "unlocks": "Dein {{roleProducer}} kann Buchungen übernehmen, sobald Anfragen reinkommen."
       },
       "people": {
-        "emptyBadge": "Noch keine Artists",
+        "emptyBadge": "Noch keine {{Artists}}",
         "activeBadge": "{{count}} aktiv",
-        "rosterLabel_one": "Artist auf der Besetzungsliste",
-        "rosterLabel_other": "Artists auf der Besetzungsliste",
-        "addLabel": "Einen Artist hinzufügen",
+        "rosterLabel_one": "{{Artist}} auf der Besetzungsliste",
+        "rosterLabel_other": "{{Artists}} auf der Besetzungsliste",
+        "addLabel": "$t(getRunning:panel.body.people.addLabel_{{kind}})",
+        "addLabel_production": "Einen Artist hinzufügen",
+        "addLabel_staffing": "Ein Teammitglied hinzufügen",
         "namePlaceholder": "Vollständiger Name",
         "emailPlaceholder": "E-Mail (optional)",
         "add": "Hinzufügen",
         "or": "oder",
         "importButton": "Tabelle importieren",
-        "unlocks": "Anfragen und Direktbuchungen wählen beide aus dieser Liste. Artists bekommen keine E-Mail, bevor du sie zu einem Datum anfragst."
+        "unlocks": "$t(getRunning:panel.body.people.unlocks_{{kind}})",
+        "unlocks_production": "Anfragen und Direktbuchungen wählen beide aus dieser Liste. Artists bekommen keine E-Mail, bevor du sie zu einem Termin anfragst.",
+        "unlocks_staffing": "Anfragen und Direktbuchungen wählen beide aus dieser Liste. Personen bekommen keine E-Mail, bevor du sie zu einer Schicht anfragst."
       },
       "ladder": {
-        "createLabel": "Neue Besetzung",
-        "namePlaceholder": "Name der Besetzung",
-        "create": "Besetzung erstellen",
-        "castCreated": "Besetzung erstellt",
-        "castCreateFailed": "Besetzung konnte nicht erstellt werden",
-        "citiesWithDates": "Städte mit Terminen",
+        "createLabel": "$t(getRunning:panel.body.ladder.createLabel_{{kind}})",
+        "createLabel_production": "Neue Besetzung",
+        "createLabel_staffing": "Neues Team",
+        "namePlaceholder": "$t(getRunning:panel.body.ladder.namePlaceholder_{{kind}})",
+        "namePlaceholder_production": "Name der Besetzung",
+        "namePlaceholder_staffing": "Name des Teams",
+        "create": "{{Cast}} erstellen",
+        "castCreated": "{{Cast}} erstellt",
+        "castCreateFailed": "{{Cast}} konnte nicht erstellt werden",
+        "citiesWithDates": "$t(getRunning:panel.body.ladder.citiesWithDates_{{kind}})",
+        "citiesWithDates_production": "Städte mit Terminen",
+        "citiesWithDates_staffing": "Städte mit Schichten",
         "unrankedCount_one": "{{count}} nicht abgedeckt",
         "unrankedCount_other": "{{count}} nicht abgedeckt",
-        "dateCount_one": "{{count}} Termin",
-        "dateCount_other": "{{count}} Termine",
+        "dateCount_one": "{{count}} {{ShowDate}}",
+        "dateCount_other": "{{count}} {{ShowDates}}",
         "noTier1": "keine erste Gruppe",
         "pickTier1": "Erste Gruppe wählen",
         "addTierN": "Gruppe {{n}} hinzufügen",
-        "noCastsAvailable": "Noch keine Besetzungen",
+        "noCastsAvailable": "Noch keine {{Casts}}",
         "memberCount_one": "{{count}} Mitglied",
         "memberCount_other": "{{count}} Mitglieder",
-        "unlocks_one": "Reihe auch {{city}} und {{count}} Termin wird in der heutigen täglichen Sendung anfragbar.",
-        "unlocks_other": "Reihe auch {{city}} und {{count}} Termine werden in der heutigen täglichen Sendung anfragbar.",
-        "unlocksDone": "Jede Stadt mit Terminen hat eine erste Gruppe mit Mitgliedern.",
+        "unlocks_one": "Reihe auch {{city}} und {{count}} {{ShowDate}} wird in der heutigen täglichen Sendung anfragbar.",
+        "unlocks_other": "Reihe auch {{city}} und {{count}} {{ShowDates}} werden in der heutigen täglichen Sendung anfragbar.",
+        "unlocksDone": "$t(getRunning:panel.body.ladder.unlocksDone_{{kind}})",
+        "unlocksDone_production": "Jede Stadt mit Terminen hat eine erste Gruppe mit Mitgliedern.",
+        "unlocksDone_staffing": "Jede Stadt mit Schichten hat eine erste Gruppe mit Mitgliedern.",
         "tierUpdated": "Gruppe {{tier}} gesetzt",
         "tierUpdateFailed": "Gruppe {{tier}} konnte nicht gesetzt werden",
-        "yourCasts": "Deine Besetzungen",
-        "castCountLabel_one": "{{count}} Besetzung",
-        "castCountLabel_other": "{{count}} Besetzungen",
+        "yourCasts": "Deine {{Casts}}",
+        "castCountLabel_one": "{{count}} {{Cast}}",
+        "castCountLabel_other": "{{count}} {{Casts}}",
         "castRankFirst": "Erste Gruppe in {{city}}",
         "castRankGroup": "Gruppe {{n}} in {{city}}",
         "castRankMulti_one": "In {{count}} Stadt gereiht",
         "castRankMulti_other": "In {{count}} Städten gereiht",
         "castNotRanked": "Noch nicht gereiht",
-        "noCitiesYet": "Noch hat keine Stadt einen zukünftigen Termin, also gibt es nichts zu reihen. Besetzungen, die du jetzt anlegst, warten hier.",
-        "datesNeedCity": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts zu reihen, bis du am Termin eine hinzufügst.",
+        "noCitiesYet": "$t(getRunning:panel.body.ladder.noCitiesYet_{{kind}})",
+        "noCitiesYet_production": "Noch hat keine Stadt einen zukünftigen Termin, also gibt es nichts zu reihen. Besetzungen, die du jetzt anlegst, warten hier.",
+        "noCitiesYet_staffing": "Noch hat keine Stadt eine zukünftige Schicht, also gibt es nichts zu reihen. Teams, die du jetzt anlegst, warten hier.",
+        "datesNeedCity": "$t(getRunning:panel.body.ladder.datesNeedCity_{{kind}})",
+        "datesNeedCity_production": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts zu reihen, bis du am Termin eine hinzufügst.",
+        "datesNeedCity_staffing": "Deine kommenden Schichten haben noch keine Stadt, also gibt es nichts zu reihen, bis du an der Schicht eine hinzufügst.",
         "tier1Empty": "erste Gruppe hat keine Mitglieder",
-        "unlocksStaff_one": "Füge der ersten Gruppe in {{city}} Mitglieder hinzu und {{count}} Termin wird in der heutigen täglichen Sendung anfragbar.",
-        "unlocksStaff_other": "Füge der ersten Gruppe in {{city}} Mitglieder hinzu und {{count}} Termine werden in der heutigen täglichen Sendung anfragbar.",
-        "emptyCastHint": "Besetzungen ohne Mitglieder sind ausgegraut. Füge dort zuerst Mitglieder hinzu."
+        "unlocksStaff_one": "Füge der ersten Gruppe in {{city}} Mitglieder hinzu und {{count}} {{ShowDate}} wird in der heutigen täglichen Sendung anfragbar.",
+        "unlocksStaff_other": "Füge der ersten Gruppe in {{city}} Mitglieder hinzu und {{count}} {{ShowDates}} werden in der heutigen täglichen Sendung anfragbar.",
+        "emptyCastHint": "{{Casts}} ohne Mitglieder sind ausgegraut. Füge dort zuerst Mitglieder hinzu."
       },
       "eligibility": {
         "gapCount_one": "{{count}} Lücke",
         "gapCount_other": "{{count}} Lücken",
-        "dateCount_one": "{{count}} Termin",
-        "dateCount_other": "{{count}} Termine",
-        "linkACast": "Besetzung verknüpfen",
-        "noCastsAvailable": "Noch keine Besetzungen",
+        "dateCount_one": "{{count}} {{ShowDate}}",
+        "dateCount_other": "{{count}} {{ShowDates}}",
+        "linkACast": "{{Cast}} verknüpfen",
+        "noCastsAvailable": "Noch keine {{Casts}}",
         "memberCount_one": "{{count}} Mitglied",
         "memberCount_other": "{{count}} Mitglieder",
-        "nullCityNote": "Manche Termine haben keine Stadt gesetzt. Behebe das Datum, damit es eine Stadt hat.",
-        "unlocks_one": "Verknüpfe eine Besetzung mit {{showTitle}} und {{count}} Termin wird anfragbar.",
-        "unlocks_other": "Verknüpfe eine Besetzung mit {{showTitle}} und {{count}} Termine werden anfragbar.",
-        "unlocksDone": "Jede Produktion und Stadt hat eine erste Gruppe mit Mitgliedern.",
-        "castLinked": "Besetzung verknüpft",
-        "castLinkFailed": "Besetzung konnte nicht verknüpft werden",
-        "byProduction": "Abdeckung nach Produktion",
+        "nullCityNote": "$t(getRunning:panel.body.eligibility.nullCityNote_{{kind}})",
+        "nullCityNote_production": "Manche Termine haben keine Stadt gesetzt. Behebe den Termin, damit er eine Stadt hat.",
+        "nullCityNote_staffing": "Manche Schichten haben keine Stadt gesetzt. Behebe die Schicht, damit sie eine Stadt hat.",
+        "unlocks_one": "$t(getRunning:panel.body.eligibility.unlocks_{{kind}}_one)",
+        "unlocks_production_one": "Verknüpfe eine Besetzung mit {{showTitle}} und {{count}} Termin wird anfragbar.",
+        "unlocks_staffing_one": "Verknüpfe ein Team mit {{showTitle}} und {{count}} Schicht wird anfragbar.",
+        "unlocks_other": "$t(getRunning:panel.body.eligibility.unlocks_{{kind}}_other)",
+        "unlocks_production_other": "Verknüpfe eine Besetzung mit {{showTitle}} und {{count}} Termine werden anfragbar.",
+        "unlocks_staffing_other": "Verknüpfe ein Team mit {{showTitle}} und {{count}} Schichten werden anfragbar.",
+        "unlocksDone": "$t(getRunning:panel.body.eligibility.unlocksDone_{{kind}})",
+        "unlocksDone_production": "Jede Produktion und Stadt hat eine erste Gruppe mit Mitgliedern.",
+        "unlocksDone_staffing": "Jeder Kunde und jede Stadt hat eine erste Gruppe mit Mitgliedern.",
+        "castLinked": "{{Cast}} verknüpft",
+        "castLinkFailed": "{{Cast}} konnte nicht verknüpft werden",
+        "byProduction": "Abdeckung nach {{Production}}",
         "fullyCovered": "Vollständig abgedeckt",
         "cityCount_one": "{{count}} Stadt",
         "cityCount_other": "{{count}} Städte",
-        "noCastYet": "Noch keine Besetzung in {{cities}}",
-        "yourCasts": "Deine Besetzungen",
-        "castCountLabel_one": "{{count}} Besetzung",
-        "castCountLabel_other": "{{count}} Besetzungen",
-        "noProductionsYet": "Noch hat keine Produktion einen zukünftigen Termin, also gibt es nichts abzudecken. Besetzungen, die du jetzt anlegst, warten hier.",
-        "datesNeedCity": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts abzudecken, bis du am Termin eine hinzufügst.",
-        "castEmpty": "Die zuerst gereihte Besetzung in {{cities}} hat noch keine Mitglieder.",
-        "emptyCastHint": "Besetzungen ohne Mitglieder sind ausgegraut. Füge dort zuerst Mitglieder hinzu."
+        "noCastYet": "$t(getRunning:panel.body.eligibility.noCastYet_{{kind}})",
+        "noCastYet_production": "Noch keine Besetzung in {{cities}}",
+        "noCastYet_staffing": "Noch kein Team in {{cities}}",
+        "yourCasts": "Deine {{Casts}}",
+        "castCountLabel_one": "{{count}} {{Cast}}",
+        "castCountLabel_other": "{{count}} {{Casts}}",
+        "noProductionsYet": "$t(getRunning:panel.body.eligibility.noProductionsYet_{{kind}})",
+        "noProductionsYet_production": "Noch hat keine Produktion einen zukünftigen Termin, also gibt es nichts abzudecken. Besetzungen, die du jetzt anlegst, warten hier.",
+        "noProductionsYet_staffing": "Noch hat kein Kunde eine zukünftige Schicht, also gibt es nichts abzudecken. Teams, die du jetzt anlegst, warten hier.",
+        "datesNeedCity": "$t(getRunning:panel.body.eligibility.datesNeedCity_{{kind}})",
+        "datesNeedCity_production": "Deine kommenden Termine haben noch keine Stadt, also gibt es nichts abzudecken, bis du am Termin eine hinzufügst.",
+        "datesNeedCity_staffing": "Deine kommenden Schichten haben noch keine Stadt, also gibt es nichts abzudecken, bis du an der Schicht eine hinzufügst.",
+        "castEmpty": "$t(getRunning:panel.body.eligibility.castEmpty_{{kind}})",
+        "castEmpty_production": "Die zuerst gereihte Besetzung in {{cities}} hat noch keine Mitglieder.",
+        "castEmpty_staffing": "Das zuerst gereihte Team in {{cities}} hat noch keine Mitglieder.",
+        "emptyCastHint": "{{Casts}} ohne Mitglieder sind ausgegraut. Füge dort zuerst Mitglieder hinzu."
       }
     }
   },
   "tasks": {
     "dates": {
-      "title": "Produktionen werden synchronisiert",
-      "subLabel": "Produktionen kommen rein, von Airtable, stündlich",
-      "description": "Deine Produktionen kommen automatisch rein, sodass immer etwas zum Planen da ist.",
+      "title": "{{Productions}} werden synchronisiert",
+      "subLabel": "{{Productions}} kommen rein, von Airtable, stündlich",
+      "description": "Deine {{Productions}} kommen automatisch rein, sodass immer etwas zum Planen da ist.",
       "action": "Prüfen"
     },
     "slots": {
-      "title": "Besetzungsplan bei jeder Produktion festgelegt",
-      "subLabel": "Besetzungsplan bei jeder Produktion festgelegt",
-      "description": "Wie viele Artists jede Produktion braucht, Haupt- und Zweitbesetzung.",
+      "title": "$t(getRunning:tasks.slots.title_{{kind}})",
+      "title_production": "Aufteilung der Positionen bei jeder Produktion festgelegt",
+      "title_staffing": "Aufteilung der Positionen bei jedem Kunden festgelegt",
+      "subLabel": "$t(getRunning:tasks.slots.subLabel_{{kind}})",
+      "subLabel_production": "Aufteilung der Positionen bei jeder Produktion festgelegt",
+      "subLabel_staffing": "Aufteilung der Positionen bei jedem Kunden festgelegt",
+      "description": "$t(getRunning:tasks.slots.description_{{kind}})",
+      "description_production": "Wie viele Artists jede Produktion braucht, Haupt- und Zweitbesetzung.",
+      "description_staffing": "Wie viele Personen jeder Kunde braucht, Hauptteam und Ersatz.",
       "action": "Klären"
     },
     "flow": {
@@ -240,33 +294,35 @@
       "action": "Ändern"
     },
     "people": {
-      "title": "Deine Artists hinzufügen",
-      "description": "Niemand kann gebucht werden, solange deine Besetzungsliste keine aktiven Artists hat. Importiere eine Tabelle oder füge sie von Hand hinzu.",
+      "title": "Deine {{Artists}} hinzufügen",
+      "description": "Niemand kann gebucht werden, solange deine Besetzungsliste keine aktiven {{Artists}} hat. Importiere eine Tabelle oder füge sie von Hand hinzu.",
       "action": "Hier hinzufügen"
     },
     "ladder": {
-      "title": "Deine Besetzungen reihen",
-      "description": "Besetzungsreihenfolge entscheidet, wer zuerst angefragt wird. Eine Stadt ohne erste Gruppe öffnet sich für niemanden.",
+      "title": "Deine {{Casts}} reihen",
+      "description": "Die Reihenfolge der {{Casts}} entscheidet, wer zuerst angefragt wird. Eine Stadt ohne erste Gruppe öffnet sich für niemanden.",
       "action": "Hier reihen"
     },
     "eligibility": {
       "title": "Prüfen, wer angefragt werden kann",
-      "description": "Welche Besetzungen zu welcher Produktion in welcher Stadt gehören.",
+      "description": "$t(getRunning:tasks.eligibility.description_{{kind}})",
+      "description_production": "Welche Besetzungen zu welcher Produktion in welcher Stadt gehören.",
+      "description_staffing": "Welche Teams zu welchem Kunden in welcher Stadt gehören.",
       "action": "Öffnen"
     },
     "timing": {
       "title": "Anfragezeitpunkt bestätigen",
-      "description": "Wann Anfragen rausgehen und wie lange Artists zum Antworten haben.",
+      "description": "Wann Anfragen rausgehen und wie lange {{Artists}} zum Antworten haben.",
       "action": "Öffnen"
     },
     "team": {
-      "title": "Dein Production Team einladen",
-      "description": "Die Producer, die Termine planen, Anfragen versenden und die Besetzung buchen. Buchen kann bei dir bleiben.",
+      "title": "Dein {{roleProducer}} einladen",
+      "description": "Das {{roleProducer}} plant {{ShowDates}}, versendet Anfragen und bucht die {{casts}}. Buchen kann bei dir bleiben.",
       "action": "Einladen"
     },
     "letterhead": {
       "title": "Briefkopf",
-      "description": "Dein Name, deine Adresse und dein Logo auf jedem Vertrag.",
+      "description": "Dein Name, deine Adresse und dein Logo auf jedem {{hireOrder}}.",
       "action": "Öffnen"
     },
     "terms": {
@@ -276,7 +332,9 @@
     },
     "countersign": {
       "title": "Gegenzeichnung",
-      "description": "Wie der Artist einen Engagementvertrag unterschreibt.",
+      "description": "$t(getRunning:tasks.countersign.description_{{kind}})",
+      "description_production": "Wie der Artist den Engagementvertrag unterschreibt.",
+      "description_staffing": "Wie das Teammitglied den Arbeitsauftrag unterschreibt.",
       "action": "Öffnen"
     }
   },
@@ -299,7 +357,7 @@
   "reference": {
     "title": "Wie diese Organisation funktioniert",
     "intro": "Eine schreibgeschützte Übersicht der Regeln, die für diesen Arbeitsbereich gerade gelten.",
-    "emptyModules": "Weder die Booking Engine noch Verträge sind für diesen Arbeitsbereich eingeschaltet.",
+    "emptyModules": "Weder die Booking Engine noch {{HireOrders}} sind für diesen Arbeitsbereich eingeschaltet.",
     "provenance": {
       "withDate": "Festgelegt von {{name}}, {{date}}",
       "nameOnly": "Festgelegt von {{name}}"
@@ -313,7 +371,7 @@
         "value": "{{hour}} tägliche Sendung, {{hours}} Std zum Antworten"
       },
       "castCoverage": {
-        "label": "Besetzungsabdeckung",
+        "label": "Abdeckung der {{Casts}}",
         "allCovered": "Alles abgedeckt",
         "partial": "{{covered}} von {{total}} Städten abgedeckt"
       },
@@ -334,30 +392,30 @@
   },
   "feature": {
     "crumb": {
-      "dates": "Termine",
-      "slots": "Produktionen",
+      "dates": "{{ShowDates}}",
+      "slots": "{{Productions}}",
       "flow": "Einstellungen › Booking Engine",
-      "people": "Artists",
-      "ladder": "Einstellungen › Besetzung und Abdeckung",
-      "eligibility": "Einstellungen › Besetzung und Abdeckung",
+      "people": "{{Artists}}",
+      "ladder": "Einstellungen › {{Cast}} und Abdeckung",
+      "eligibility": "Einstellungen › {{Cast}} und Abdeckung",
       "timing": "Einstellungen › Booking Engine",
       "team": "Einstellungen › Personen",
-      "letterhead": "Einstellungen › Verträge",
-      "terms": "Einstellungen › Verträge",
-      "countersign": "Einstellungen › Verträge"
+      "letterhead": "Einstellungen › {{HireOrders}}",
+      "terms": "Einstellungen › {{HireOrders}}",
+      "countersign": "Einstellungen › {{HireOrders}}"
     },
     "short": {
-      "dates": "Termine",
-      "slots": "Produktionen",
+      "dates": "{{ShowDates}}",
+      "slots": "{{Productions}}",
       "flow": "Booking Engine",
-      "people": "Artists",
-      "ladder": "Besetzung und Abdeckung",
-      "eligibility": "Besetzung und Abdeckung",
+      "people": "{{Artists}}",
+      "ladder": "{{Cast}} und Abdeckung",
+      "eligibility": "{{Cast}} und Abdeckung",
       "timing": "Booking Engine",
       "team": "Personen",
-      "letterhead": "Verträge",
-      "terms": "Verträge",
-      "countersign": "Verträge"
+      "letterhead": "{{HireOrders}}",
+      "terms": "{{HireOrders}}",
+      "countersign": "{{HireOrders}}"
     },
     "open": "Öffnen"
   }

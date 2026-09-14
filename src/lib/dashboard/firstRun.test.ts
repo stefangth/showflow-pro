@@ -92,7 +92,7 @@ it("adminTeamStep is a non-gating booking_flow step, done only with a producer",
   // Non-gating: never chips, never counts against canOffer/complete.
   expect(step.block).toBeNull();
   // Carries the shared meta (title/CTA) so any generic consumer renders it.
-  expect(step.title).toBe("Add your production team");
+  expect(step.title).toBe("Add your Production Team");
   expect(step.ctaLabel).toBe("Invite team");
 });
 

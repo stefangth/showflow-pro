@@ -19,23 +19,23 @@
       "blocking_other": "They are yours to do and take about {{minutes}} minutes. Nothing else here blocks anything, and nothing here stops you using the rest of the app.",
       "ready": "Everything blocking your first ask is done. The rest of this board is worth finishing, but nothing here holds you back anymore.",
       "complete": "Every task on this board is done. Come back to Settings any time if something changes.",
-      "producer": "This is here so you know why Dates looks empty, not so you can fix all of it."
+      "producer": "This is here so you know why {{ShowDates}} looks empty, not so you can fix all of it."
     },
-    "datesWithoutCity_one": "1 date has no city yet, so the engine can't offer it.",
-    "datesWithoutCity_other": "{{count}} dates have no city yet, so the engine can't offer them.",
-    "datesWithoutCityLink": "Fix on Dates",
-    "datesWithoutCityUnknown": "We could not check which dates still need a city. Reload, or open Dates to see for yourself."
+    "datesWithoutCity_one": "1 {{showDate}} has no city yet, so the engine can't offer it.",
+    "datesWithoutCity_other": "{{count}} {{showDates}} have no city yet, so the engine can't offer them.",
+    "datesWithoutCityLink": "Fix on {{ShowDates}}",
+    "datesWithoutCityUnknown": "We could not check which {{showDates}} still need a city. Reload, or open {{ShowDates}} to see for yourself."
   },
   "nothingToSetUp": {
     "title": "Nothing to set up",
-    "body": "This workspace has no module that needs setup yet. Come back once booking or contracts is switched on."
+    "body": "This workspace has no module that needs setup yet. Come back once booking or {{hireOrders}} is switched on."
   },
   "progress": {
     "title": "Set up",
     "of": "of {{total}} done",
     "module": {
       "booking": "Booking engine",
-      "hireOrders": "Contracts",
+      "hireOrders": "{{HireOrders}}",
       "on": "On",
       "off": "Off"
     },
@@ -43,7 +43,7 @@
   },
   "phases": {
     "get_dates": {
-      "title": "Get dates in",
+      "title": "Get {{showDates}} in",
       "status": {
         "complete": "Running",
         "active": "In progress",
@@ -67,7 +67,7 @@
         "active": "In progress",
         "dormant": "Not blocking yet"
       },
-      "note": "Needed before the first contract goes out",
+      "note": "Needed before the first {{hireOrder}} goes out",
       "doItNow": "Do it now"
     },
     "counts": {
@@ -99,139 +99,139 @@
       "settingsLink": {
         "flow": "Change booking flow in Settings, Booking engine",
         "timing": "Change ask timing in Settings, Booking engine",
-        "ladder": "Rank casts in Settings, Casts & coverage",
-        "eligibility": "Link casts in Settings, Casts & coverage",
-        "letterhead": "Set letterhead in Settings, Contracts",
-        "terms": "Set terms in Settings, Contracts",
-        "countersign": "Set countersignature in Settings, Contracts"
+        "ladder": "Rank {{casts}} in Settings, {{Casts}} & coverage",
+        "eligibility": "Link {{casts}} in Settings, {{Casts}} & coverage",
+        "letterhead": "Set letterhead in Settings, {{HireOrders}}",
+        "terms": "Set terms in Settings, {{HireOrders}}",
+        "countersign": "Set countersignature in Settings, {{HireOrders}}"
       }
     },
     "footerNote": {
       "dates": "Sync runs hourly",
       "slots": "Saved as you go",
       "flow": "Change is logged",
-      "people": "No email until you ask about a date",
+      "people": "No email until you ask about one {{showDate}}",
       "ladder": "Ranking is per city",
-      "eligibility": "A production's own cast beats the city ranking",
+      "eligibility": "The {{production}}'s own {{cast}} beats the city ranking",
       "timing": "Applies to tonight's daily send",
       "team": "They get an email invite",
-      "letterhead": "Used on every contract",
-      "terms": "Used on every contract",
-      "countersign": "Used on every contract"
+      "letterhead": "Used on every {{hireOrder}}",
+      "terms": "Used on every {{hireOrder}}",
+      "countersign": "Used on every {{hireOrder}}"
     },
     "body": {
       "dates": {
         "connectedBadge": "Airtable connected",
         "syncedAt": "Synced {{time}}",
-        "recordCount_one": "{{count}} date",
-        "recordCount_other": "{{count}} dates",
+        "recordCount_one": "{{count}} {{showDate}}",
+        "recordCount_other": "{{count}} {{showDates}}",
         "heldLine_one": "{{count}} record held on the last run",
         "heldLine_other": "{{count}} records held on the last run",
         "resolve": "Resolve",
-        "emptyLine": "No dates yet. Connect Airtable or add a production by hand.",
+        "emptyLine": "No {{showDates}} yet. Connect Airtable or add one {{production}} by hand.",
         "setup": "Set up Airtable sync",
         "dividerOr": "or add one by hand",
-        "newShow": "New production",
-        "unlocks": "Every downstream step reads from these dates: casting breakdown, priorities and who can be asked.",
+        "newShow": "New {{production}}",
+        "unlocks": "Every downstream step reads from these {{showDates}}: parts breakdown, priorities and who can be asked.",
         "airtableDialogTitle": "Airtable sync"
       },
       "team": {
         "emailLabel": "Invite by email",
         "emailPlaceholder": "name@company.com",
         "send": "Send invite",
-        "unlocks": "Producers can take bookings off your plate once asks start landing."
+        "unlocks": "{{roleProducer}} can take bookings off your plate once asks start landing."
       },
       "people": {
-        "emptyBadge": "No artists yet",
+        "emptyBadge": "No {{artists}} yet",
         "activeBadge": "{{count}} active",
-        "rosterLabel_one": "artist on the roster",
-        "rosterLabel_other": "artists on the roster",
-        "addLabel": "Add an artist",
+        "rosterLabel_one": "{{artist}} on the roster",
+        "rosterLabel_other": "{{artists}} on the roster",
+        "addLabel": "Add a new {{artist}}",
         "namePlaceholder": "Full name",
         "emailPlaceholder": "Email (optional)",
         "add": "Add",
         "or": "or",
         "importButton": "Import a sheet",
-        "unlocks": "Asks and direct bookings both pick from this list. Artists get no email until you ask them about a date."
+        "unlocks": "Asks and direct bookings both pick from this list. {{Artists}} get no email until you ask them about one {{showDate}}."
       },
       "ladder": {
-        "createLabel": "New cast",
-        "namePlaceholder": "Cast name",
-        "create": "Create cast",
-        "castCreated": "Cast created",
-        "castCreateFailed": "Could not create cast",
-        "citiesWithDates": "Cities with dates",
+        "createLabel": "New {{cast}}",
+        "namePlaceholder": "{{Cast}} name",
+        "create": "Create {{cast}}",
+        "castCreated": "{{Cast}} created",
+        "castCreateFailed": "Could not create {{cast}}",
+        "citiesWithDates": "Cities with {{showDates}}",
         "unrankedCount_one": "{{count}} not covered",
         "unrankedCount_other": "{{count}} not covered",
-        "dateCount_one": "{{count}} date",
-        "dateCount_other": "{{count}} dates",
+        "dateCount_one": "{{count}} {{showDate}}",
+        "dateCount_other": "{{count}} {{showDates}}",
         "noTier1": "no first group",
         "pickTier1": "Pick the first group",
         "addTierN": "Add group {{n}}",
-        "noCastsAvailable": "No casts yet",
+        "noCastsAvailable": "No {{casts}} yet",
         "memberCount_one": "{{count}} member",
         "memberCount_other": "{{count}} members",
-        "unlocks_one": "Rank {{city}} too and {{count}} date becomes askable in tonight's daily send.",
-        "unlocks_other": "Rank {{city}} too and {{count}} dates become askable in tonight's daily send.",
-        "unlocksDone": "Every city with dates has a first group with members.",
+        "unlocks_one": "Rank {{city}} too and {{count}} {{showDate}} becomes askable in tonight's daily send.",
+        "unlocks_other": "Rank {{city}} too and {{count}} {{showDates}} become askable in tonight's daily send.",
+        "unlocksDone": "Every city with {{showDates}} has a first group with members.",
         "tierUpdated": "Group {{tier}} set",
         "tierUpdateFailed": "Could not set group {{tier}}",
-        "yourCasts": "Your casts",
-        "castCountLabel_one": "{{count}} cast",
-        "castCountLabel_other": "{{count}} casts",
+        "yourCasts": "Your {{casts}}",
+        "castCountLabel_one": "{{count}} {{cast}}",
+        "castCountLabel_other": "{{count}} {{casts}}",
         "castRankFirst": "First group in {{city}}",
         "castRankGroup": "Group {{n}} in {{city}}",
         "castRankMulti_one": "Ranked in {{count}} city",
         "castRankMulti_other": "Ranked in {{count}} cities",
         "castNotRanked": "Not ranked yet",
-        "noCitiesYet": "No city has a future date yet, so there is nothing to rank. Casts you add now will wait here.",
-        "datesNeedCity": "Your upcoming dates have no city set yet, so there is nothing to rank until you add one on the date.",
+        "noCitiesYet": "No city has a future {{showDate}} yet, so there is nothing to rank. {{Casts}} you add now will wait here.",
+        "datesNeedCity": "Your upcoming {{showDates}} have no city set yet, so there is nothing to rank until you add one on the {{showDate}}.",
         "tier1Empty": "first group has no members",
-        "unlocksStaff_one": "Add members to the first group in {{city}} and {{count}} date becomes askable in tonight's daily send.",
-        "unlocksStaff_other": "Add members to the first group in {{city}} and {{count}} dates become askable in tonight's daily send.",
-        "emptyCastHint": "Casts with no members are greyed out. Add members to one first."
+        "unlocksStaff_one": "Add members to the first group in {{city}} and {{count}} {{showDate}} becomes askable in tonight's daily send.",
+        "unlocksStaff_other": "Add members to the first group in {{city}} and {{count}} {{showDates}} become askable in tonight's daily send.",
+        "emptyCastHint": "{{Casts}} with no members are greyed out. Add members to one first."
       },
       "eligibility": {
         "gapCount_one": "{{count}} gap",
         "gapCount_other": "{{count}} gaps",
-        "dateCount_one": "{{count}} date",
-        "dateCount_other": "{{count}} dates",
-        "linkACast": "Link a cast",
-        "noCastsAvailable": "No casts yet",
+        "dateCount_one": "{{count}} {{showDate}}",
+        "dateCount_other": "{{count}} {{showDates}}",
+        "linkACast": "Link one {{cast}}",
+        "noCastsAvailable": "No {{casts}} yet",
         "memberCount_one": "{{count}} member",
         "memberCount_other": "{{count}} members",
-        "nullCityNote": "Some dates have no city set. Fix the date to include it.",
-        "unlocks_one": "Link a cast to {{showTitle}} and its {{count}} date becomes askable.",
-        "unlocks_other": "Link a cast to {{showTitle}} and its {{count}} dates become askable.",
-        "unlocksDone": "Every production and city has a first group with members.",
-        "castLinked": "Cast linked",
-        "castLinkFailed": "Could not link cast",
-        "byProduction": "Coverage by production",
+        "nullCityNote": "Some {{showDates}} have no city set. Fix the {{showDate}} to include it.",
+        "unlocks_one": "Link one {{cast}} to {{showTitle}} and its {{count}} {{showDate}} becomes askable.",
+        "unlocks_other": "Link one {{cast}} to {{showTitle}} and its {{count}} {{showDates}} become askable.",
+        "unlocksDone": "Every {{production}} and city has a first group with members.",
+        "castLinked": "{{Cast}} linked",
+        "castLinkFailed": "Could not link {{cast}}",
+        "byProduction": "Coverage by {{production}}",
         "fullyCovered": "Fully covered",
         "cityCount_one": "{{count}} city",
         "cityCount_other": "{{count}} cities",
-        "noCastYet": "No cast in {{cities}} yet",
-        "yourCasts": "Your casts",
-        "castCountLabel_one": "{{count}} cast",
-        "castCountLabel_other": "{{count}} casts",
-        "noProductionsYet": "No production has a future date yet, so there is nothing to cover. Casts you add now will wait here.",
-        "datesNeedCity": "Your upcoming dates have no city set yet, so there is nothing to cover until you add one on the date.",
-        "castEmpty": "The cast ranked first in {{cities}} has no members yet.",
-        "emptyCastHint": "Casts with no members are greyed out. Add members to one first."
+        "noCastYet": "No {{cast}} in {{cities}} yet",
+        "yourCasts": "Your {{casts}}",
+        "castCountLabel_one": "{{count}} {{cast}}",
+        "castCountLabel_other": "{{count}} {{casts}}",
+        "noProductionsYet": "No {{production}} has a future {{showDate}} yet, so there is nothing to cover. {{Casts}} you add now will wait here.",
+        "datesNeedCity": "Your upcoming {{showDates}} have no city set yet, so there is nothing to cover until you add one on the {{showDate}}.",
+        "castEmpty": "The {{cast}} ranked first in {{cities}} has no members yet.",
+        "emptyCastHint": "{{Casts}} with no members are greyed out. Add members to one first."
       }
     }
   },
   "tasks": {
     "dates": {
-      "title": "Productions are synced in",
-      "subLabel": "Productions in, from Airtable, hourly",
-      "description": "Your productions come in automatically, so there is always something to schedule against.",
+      "title": "{{Productions}} are synced in",
+      "subLabel": "{{Productions}} in, from Airtable, hourly",
+      "description": "Your {{productions}} come in automatically, so there is always something to schedule against.",
       "action": "Review"
     },
     "slots": {
-      "title": "Casting breakdown set on every production",
-      "subLabel": "Casting breakdown set on every production",
-      "description": "How many artists each production needs, main and understudy.",
+      "title": "Parts breakdown set on every {{production}}",
+      "subLabel": "Parts breakdown set on every {{production}}",
+      "description": "How many {{artists}} each {{production}} needs, main and {{understudy}}.",
       "action": "Resolve"
     },
     "flow": {
@@ -240,33 +240,33 @@
       "action": "Change"
     },
     "people": {
-      "title": "Add your artists",
-      "description": "Nobody to book until your roster has active artists. Import a sheet or add them by hand.",
+      "title": "Add your {{artists}}",
+      "description": "Nobody to book until your roster has active {{artists}}. Import a sheet or add them by hand.",
       "action": "Add here"
     },
     "ladder": {
-      "title": "Rank your casts",
-      "description": "Cast priorities decide who is asked first. A city with no first group opens to nobody.",
+      "title": "Rank your {{casts}}",
+      "description": "{{Cast}} priorities decide who is asked first. A city with no first group opens to nobody.",
       "action": "Rank here"
     },
     "eligibility": {
       "title": "Check who can be asked",
-      "description": "Which casts belong to which production, in which city.",
+      "description": "Which {{casts}} belong to which {{production}}, in which city.",
       "action": "Open"
     },
     "timing": {
       "title": "Confirm the ask timing",
-      "description": "When asks go out, and how long artists have to answer.",
+      "description": "When asks go out, and how long {{artists}} have to answer.",
       "action": "Open"
     },
     "team": {
-      "title": "Invite your production team",
-      "description": "The producers who plan dates, run asks and book the cast. Booking can stay with you.",
+      "title": "Invite your {{roleProducer}}",
+      "description": "{{roleProducer}} plans {{showDates}}, runs asks and books the {{cast}}. Booking can stay with you.",
       "action": "Invite"
     },
     "letterhead": {
       "title": "Letterhead",
-      "description": "Your name, address and logo on every contract.",
+      "description": "Your name, address and logo on every {{hireOrder}}.",
       "action": "Open"
     },
     "terms": {
@@ -276,7 +276,7 @@
     },
     "countersign": {
       "title": "Countersignature",
-      "description": "How the artist signs a contract.",
+      "description": "How the {{artist}} signs the {{hireOrder}}.",
       "action": "Open"
     }
   },
@@ -299,7 +299,7 @@
   "reference": {
     "title": "How this org works",
     "intro": "A read-only summary of the rules currently in effect for this workspace.",
-    "emptyModules": "Neither the booking engine nor contracts is switched on for this workspace yet.",
+    "emptyModules": "Neither the booking engine nor {{hireOrders}} is switched on for this workspace yet.",
     "provenance": {
       "withDate": "Set by {{name}}, {{date}}",
       "nameOnly": "Set by {{name}}"
@@ -313,7 +313,7 @@
         "value": "{{hour}} daily send, {{hours}}h to answer"
       },
       "castCoverage": {
-        "label": "Cast coverage",
+        "label": "{{Cast}} coverage",
         "allCovered": "All covered",
         "partial": "{{covered}} of {{total}} cities covered"
       },
@@ -334,30 +334,30 @@
   },
   "feature": {
     "crumb": {
-      "dates": "Dates",
-      "slots": "Productions",
+      "dates": "{{ShowDates}}",
+      "slots": "{{Productions}}",
       "flow": "Settings › Booking engine",
-      "people": "Artists",
-      "ladder": "Settings › Casts & coverage",
-      "eligibility": "Settings › Casts & coverage",
+      "people": "{{Artists}}",
+      "ladder": "Settings › {{Casts}} & coverage",
+      "eligibility": "Settings › {{Casts}} & coverage",
       "timing": "Settings › Booking engine",
       "team": "Settings › People",
-      "letterhead": "Settings › Contracts",
-      "terms": "Settings › Contracts",
-      "countersign": "Settings › Contracts"
+      "letterhead": "Settings › {{HireOrders}}",
+      "terms": "Settings › {{HireOrders}}",
+      "countersign": "Settings › {{HireOrders}}"
     },
     "short": {
-      "dates": "Dates",
-      "slots": "Productions",
+      "dates": "{{ShowDates}}",
+      "slots": "{{Productions}}",
       "flow": "Booking engine",
-      "people": "Artists",
-      "ladder": "Casts & coverage",
-      "eligibility": "Casts & coverage",
+      "people": "{{Artists}}",
+      "ladder": "{{Casts}} & coverage",
+      "eligibility": "{{Casts}} & coverage",
       "timing": "Booking engine",
       "team": "People",
-      "letterhead": "Contracts",
-      "terms": "Contracts",
-      "countersign": "Contracts"
+      "letterhead": "{{HireOrders}}",
+      "terms": "{{HireOrders}}",
+      "countersign": "{{HireOrders}}"
     },
     "open": "Open"
   }
