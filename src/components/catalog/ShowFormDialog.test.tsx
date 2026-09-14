@@ -99,7 +99,7 @@ describe("ShowFormDialog", () => {
     }));
     renderWithProviders(<ShowFormDialog open onOpenChange={() => {}} allShows={[]} />);
 
-    expect(await screen.findByText(/cities you play/i)).toBeInTheDocument();
+    expect(await screen.findByText(/cities you work in/i)).toBeInTheDocument();
     expect(await screen.findByText("Bremen")).toBeInTheDocument();
 
     // Direct structural assertion, not an indirect "the outer submit never fired": jsdom

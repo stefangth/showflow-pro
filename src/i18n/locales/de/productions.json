@@ -1,8 +1,10 @@
 {
   "page": {
-    "title": "Produktionen",
-    "description": "Dein Produktionskatalog: Besetzungsplan, Status und Reihenfolge.",
-    "newProduction": "Neue Produktion"
+    "title": "{{Productions}}",
+    "description": "Dein Katalog der {{Productions}}: Aufteilung der Positionen, Status und Reihenfolge.",
+    "newProduction": "$t(productions:page.newProduction_{{kind}})",
+    "newProduction_production": "Neue Produktion",
+    "newProduction_staffing": "Neuer Kunde"
   },
   "filter": {
     "active": "Aktiv",
@@ -14,64 +16,82 @@
     "archived": "Archiviert",
     "draft": "Entwurf"
   },
-  "empty": "Noch keine Produktionen. Lege deine erste an.",
+  "empty": "$t(productions:empty_{{kind}})",
+  "empty_production": "Noch keine Produktionen. Lege deine erste an.",
+  "empty_staffing": "Noch keine Kunden. Lege deinen ersten an.",
   "errors": {
-    "loadFailed": "Produktionen konnten nicht geladen werden."
+    "loadFailed": "{{Productions}} konnten nicht geladen werden."
   },
   "row": {
     "unconfigured": "Nicht konfiguriert",
     "synced": "Synchronisiert",
-    "dateCount_one": "{{count}} Termin",
-    "dateCount_other": "{{count}} Termine"
+    "dateCount_one": "{{count}} {{ShowDate}}",
+    "dateCount_other": "{{count}} {{ShowDates}}"
   },
   "tooltips": {
     "edit": "{{name}} bearbeiten",
-    "noPermissionEdit": "Du hast keine Berechtigung, Produktionen zu bearbeiten",
-    "noPermissionArchive": "Du hast keine Berechtigung, Produktionen zu archivieren",
-    "restore": "Produktion wiederherstellen",
-    "archive": "Produktion archivieren",
+    "noPermissionEdit": "Du hast keine Berechtigung, {{Productions}} zu bearbeiten",
+    "noPermissionArchive": "Du hast keine Berechtigung, {{Productions}} zu archivieren",
+    "restore": "$t(productions:tooltips.restore_{{kind}})",
+    "restore_production": "Produktion wiederherstellen",
+    "restore_staffing": "Kunden wiederherstellen",
+    "archive": "$t(productions:tooltips.archive_{{kind}})",
+    "archive_production": "Produktion archivieren",
+    "archive_staffing": "Kunden archivieren",
     "toggleArchive": "Archivierung umschalten",
-    "delete": "Produktion löschen",
-    "deleteSyncedBlocked": "Synchronisierte Produktionen können nicht gelöscht werden, archiviere sie stattdessen",
-    "deleteHasDates": "Hat Termine, archiviere sie stattdessen",
-    "noPermissionCreate": "Du hast keine Berechtigung, Produktionen zu erstellen"
+    "delete": "$t(productions:tooltips.delete_{{kind}})",
+    "delete_production": "Produktion löschen",
+    "delete_staffing": "Kunden löschen",
+    "deleteSyncedBlocked": "Synchronisierte {{Productions}} können nicht gelöscht werden, archiviere sie stattdessen",
+    "deleteHasDates": "Hat {{ShowDates}}, archiviere sie stattdessen",
+    "noPermissionCreate": "Du hast keine Berechtigung, {{Productions}} zu erstellen"
   },
   "deleteDialog": {
-    "title": "Diese Produktion löschen?",
+    "title": "$t(productions:deleteDialog.title_{{kind}})",
+    "title_production": "Diese Produktion löschen?",
+    "title_staffing": "Diesen Kunden löschen?",
     "description": "Dadurch wird \"{{name}}\" dauerhaft entfernt. Das kann nicht rückgängig gemacht werden.",
     "cancel": "Abbrechen",
     "confirm": "Löschen"
   },
   "listToasts": {
-    "deleted": "Produktion gelöscht",
-    "archived": "Produktion archiviert",
-    "restored": "Produktion wiederhergestellt"
+    "deleted": "{{Production}} gelöscht",
+    "archived": "{{Production}} archiviert",
+    "restored": "{{Production}} wiederhergestellt"
   },
   "form": {
-    "editTitle": "Produktion bearbeiten",
-    "newTitle": "Neue Produktion",
+    "editTitle": "$t(productions:form.editTitle_{{kind}})",
+    "editTitle_production": "Produktion bearbeiten",
+    "editTitle_staffing": "Kunden bearbeiten",
+    "newTitle": "$t(productions:form.newTitle_{{kind}})",
+    "newTitle_production": "Neue Produktion",
+    "newTitle_staffing": "Neuer Kunde",
     "syncedBadge": "Aus Airtable synchronisiert",
     "programLabel": "Programm",
     "subProgramLabel": "Unterprogramm",
     "categoryLabel": "Kategorie",
     "descriptionLabel": "Beschreibung",
-    "slotsHeading": "Besetzungsplan",
-    "slotTotals": "{{main}} Hauptbesetzung · {{understudyCount}} Zweitbesetzung",
-    "slotsHelp": "Benenne jede Position und gib ihr die nötigen Skills. Jeder Termin dieser Produktion braucht dann die Summe dieser Skills. Es gibt keine separate Liste erforderlicher Skills, die du pflegen musst.",
+    "slotsHeading": "Aufteilung der Positionen",
+    "slotTotals": "{{main}} Hauptposition · {{understudyCount}} {{Understudy}}",
+    "slotsHelp": "$t(productions:form.slotsHelp_{{kind}})",
+    "slotsHelp_production": "Benenne jede Position und gib ihr die nötigen Skills. Jeder Termin dieser Produktion braucht dann die Summe dieser Skills. Es gibt keine separate Liste erforderlicher Skills, die du pflegen musst.",
+    "slotsHelp_staffing": "Benenne jede Position und gib ihr die nötigen Qualifikationen. Jede Schicht dieses Kunden braucht dann die Summe dieser Qualifikationen. Es gibt keine separate Liste erforderlicher Qualifikationen, die du pflegen musst.",
     "slotGroupNamed": "Position: {{name}}",
     "slotGroupIndex": "Position {{index}}",
     "roleNameLabel": "Positionsname",
     "countLabel": "Anzahl",
-    "kindMain": "Hauptbesetzung",
-    "kindUnderstudy": "Zweitbesetzung",
+    "kindMain": "Hauptposition",
+    "kindUnderstudy": "{{Understudy}}",
     "removeSlot": "{{name}} entfernen",
     "slotFallback": "Position",
-    "skillsEmptyHint": "Noch keine Skills. Lege den ersten hier an.",
-    "skillsEmptyHintLocked": "Noch keine Skills. Ein Admin kann sie in den Einstellungen anlegen.",
+    "skillsEmptyHint": "$t(productions:form.skillsEmptyHint_{{kind}})",
+    "skillsEmptyHint_production": "Noch keine Skills. Lege den ersten hier an.",
+    "skillsEmptyHint_staffing": "Noch keine Qualifikationen. Lege die erste hier an.",
+    "skillsEmptyHintLocked": "Noch keine {{Skills}}. Ein Admin kann sie in den Einstellungen anlegen.",
     "addSlot": "Position hinzufügen",
     "cities": {
-      "heading": "Städte, in denen du spielst",
-      "sub": "Städte gelten für alle Produktionen gemeinsam. Lege eine hier an, damit sie bereit ist, wenn du einen Termin planst.",
+      "heading": "Städte, in denen du arbeitest",
+      "sub": "Städte gelten für alle {{Productions}} gemeinsam. Lege eine hier an, damit sie bereit ist, wenn du {{ShowDates}} planst.",
       "new": "Neue Stadt",
       "nameLabel": "Stadtname",
       "create": "Stadt hinzufügen",
@@ -89,8 +109,10 @@
     "save": "Speichern",
     "create": "Erstellen",
     "callout": {
-      "withSkills": "Jeder Termin dieser Produktion wird {{skillNames}} erfordern. Ein einzelner Termin kann trotzdem einen Skill ergänzen oder weglassen, ohne die Produktion zu ändern.",
-      "none": "Es sind noch keine Skills erforderlich. Füge einer Position Skills hinzu, um sie für jeden Termin zu verlangen."
+      "withSkills": "$t(productions:form.callout.withSkills_{{kind}})",
+      "withSkills_production": "Jeder Termin dieser Produktion wird {{skillNames}} erfordern. Ein einzelner Termin kann trotzdem einen Skill ergänzen oder weglassen, ohne die Produktion zu ändern.",
+      "withSkills_staffing": "Jede Schicht dieses Kunden wird {{skillNames}} erfordern. Eine einzelne Schicht kann trotzdem eine Qualifikation ergänzen oder weglassen, ohne den Kunden zu ändern.",
+      "none": "Es sind noch keine {{Skills}} erforderlich. Füge einer Position {{Skills}} hinzu, um sie für alle {{ShowDates}} zu verlangen."
     },
     "validation": {
       "programOrSubRequired": "Programm oder Unterprogramm erforderlich"
@@ -98,9 +120,9 @@
     "toasts": {
       "saveSlotsFailed": "Positionen konnten nicht gespeichert werden",
       "noActiveOrg": "Keine aktive Organisation",
-      "updated": "Produktion aktualisiert",
-      "created": "Produktion erstellt"
+      "updated": "{{Production}} aktualisiert",
+      "created": "{{Production}} erstellt"
     },
-    "skillsLoadFailed": "Wir konnten deine Skills nicht laden, daher fehlen in dieser Liste womöglich welche. Lade die Seite neu und versuche es erneut."
+    "skillsLoadFailed": "Wir konnten deine {{Skills}} nicht laden, daher fehlen in dieser Liste womöglich welche. Lade die Seite neu und versuche es erneut."
   }
 }

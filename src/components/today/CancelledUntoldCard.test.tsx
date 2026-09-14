@@ -28,9 +28,9 @@ describe("CancelledUntoldCard", () => {
       <CancelledUntoldCard item={aCancelled()} onTellCast={vi.fn()} onReadFirst={vi.fn()} />,
     );
 
-    const body = screen.getByText(/The house cancelled this date\./);
+    const body = screen.getByText(/This date was cancelled\./);
     expect(body.textContent).toBe(
-      "The house cancelled this date. Marek Kowal and Tomás Ruiz still have it in their calendar. " +
+      "This date was cancelled. Marek Kowal and Tomás Ruiz still have it in their calendar. " +
         "Autopilot does not send bad news on its own.",
     );
     expect(body.textContent).not.toContain("{{when}}");

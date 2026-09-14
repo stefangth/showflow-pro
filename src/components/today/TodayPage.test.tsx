@@ -102,7 +102,7 @@ describe("TodayPage", () => {
     render(<TodayPage {...baseProps({ model })} />);
 
     expect(screen.getByRole("heading", { name: "Nothing needs you" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Look at the season anyway" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Look at the schedule anyway" })).toBeInTheDocument();
   });
 
   it("renders the bounced banner only when bounces exist", () => {

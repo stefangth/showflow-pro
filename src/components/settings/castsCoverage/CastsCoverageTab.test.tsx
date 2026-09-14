@@ -36,8 +36,8 @@ describe("CastsCoverageTab", () => {
 
   it("switches to the Production Ownership panel", async () => {
     renderWithProviders(<CastsCoverageTab orgId="org-1" />);
-    fireEvent.click(screen.getByRole("tab", { name: "Production Ownership" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Production ownership" }));
     expect(await screen.findByText("Owners by program")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Production Ownership" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "Production ownership" })).toHaveAttribute("aria-selected", "true");
   });
 });

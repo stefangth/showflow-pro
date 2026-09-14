@@ -40,7 +40,8 @@ const IDENTICAL_OK: Record<string, string> = {
   'settings.permissions.row.roleRight': 'interpolation only ("{{role}}: {{label}}"), no words',
 
   // settingsCastsCoverage
-  'settingsCastsCoverage.coverage.showsTitle': '"Shows" is a loanword used untranslated in the German UI (dashboard/bookings)',
+  'settingsCastsCoverage.coverage.showsTitle': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+  'settingsCastsCoverage.coverage.castsTitle': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
 
   // settingsSkills
   'settingsSkills.header.title': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
@@ -101,12 +102,19 @@ const IDENTICAL_OK: Record<string, string> = {
   'admin.bulk.placeholder': 'example email addresses only (alex@email.com / sam@email.com)',
 
   // artists
-  'artists.page.title': 'role noun "Artists" kept untranslated (TERMS)',
+  'artists.page.title': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+  'artists.page.skillsLabel': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+  'artists.page.castsLabel': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+  'artists.sheet.skillsLabel': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
   'artists.sheet.name': '"Name" is identical in German',
   'artists.sheet.statusLabel': '"Status" is identical in German',
   'artists.import.fields.name': '"Name" is identical in German',
   'artists.import.review.colName': '"Name" is identical in German',
   'artists.import.review.colStatus': '"Status" is identical in German',
+
+  // productions
+  'productions.page.title': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+  'productions.form.kindUnderstudy': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
 
   // hireOrdersPages
   'hireOrdersPages.ordersTable.colArtist': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',

@@ -1,8 +1,8 @@
 {
   "page": {
-    "title": "Productions",
-    "description": "Your production catalog: casting breakdown, status, and order.",
-    "newProduction": "New production"
+    "title": "{{Productions}}",
+    "description": "Your {{production}} catalog: parts breakdown, status, and order.",
+    "newProduction": "New {{production}}"
   },
   "filter": {
     "active": "Active",
@@ -14,64 +14,64 @@
     "archived": "Archived",
     "draft": "Draft"
   },
-  "empty": "No productions yet. Create your first one.",
+  "empty": "No {{productions}} yet. Create your first one.",
   "errors": {
-    "loadFailed": "Failed to load productions."
+    "loadFailed": "Failed to load {{productions}}."
   },
   "row": {
     "unconfigured": "Unconfigured",
     "synced": "Synced",
-    "dateCount_one": "{{count}} date",
-    "dateCount_other": "{{count}} dates"
+    "dateCount_one": "{{count}} {{showDate}}",
+    "dateCount_other": "{{count}} {{showDates}}"
   },
   "tooltips": {
     "edit": "Edit {{name}}",
-    "noPermissionEdit": "You don't have permission to edit productions",
-    "noPermissionArchive": "You don't have permission to archive productions",
-    "restore": "Restore production",
-    "archive": "Archive production",
+    "noPermissionEdit": "You don't have permission to edit {{productions}}",
+    "noPermissionArchive": "You don't have permission to archive {{productions}}",
+    "restore": "Restore {{production}}",
+    "archive": "Archive {{production}}",
     "toggleArchive": "Toggle archive",
-    "delete": "Delete production",
-    "deleteSyncedBlocked": "Synced productions can't be deleted, archive instead",
-    "deleteHasDates": "Has dates, archive instead",
-    "noPermissionCreate": "You don't have permission to create productions"
+    "delete": "Delete {{production}}",
+    "deleteSyncedBlocked": "Synced {{productions}} can't be deleted, archive instead",
+    "deleteHasDates": "Has {{showDates}}, archive instead",
+    "noPermissionCreate": "You don't have permission to create {{productions}}"
   },
   "deleteDialog": {
-    "title": "Delete this production?",
+    "title": "Delete this {{production}}?",
     "description": "This permanently removes \"{{name}}\". This cannot be undone.",
     "cancel": "Cancel",
     "confirm": "Delete"
   },
   "listToasts": {
-    "deleted": "Production deleted",
-    "archived": "Production archived",
-    "restored": "Production restored"
+    "deleted": "{{Production}} deleted",
+    "archived": "{{Production}} archived",
+    "restored": "{{Production}} restored"
   },
   "form": {
-    "editTitle": "Edit production",
-    "newTitle": "New production",
+    "editTitle": "Edit {{production}}",
+    "newTitle": "New {{production}}",
     "syncedBadge": "Synced from Airtable",
     "programLabel": "Program",
     "subProgramLabel": "Sub-program",
     "categoryLabel": "Category",
     "descriptionLabel": "Description",
-    "slotsHeading": "Casting breakdown",
-    "slotTotals": "{{main}} main · {{understudyCount}} understudy",
-    "slotsHelp": "Name each part and give it the skills it needs. Every date of this production then requires the union of these skills. There is no separate required-skills list to keep in sync.",
+    "slotsHeading": "Parts breakdown",
+    "slotTotals": "{{main}} main · {{understudyCount}} {{understudy}}",
+    "slotsHelp": "Name each part and give it the {{skills}} it needs. Every {{showDate}} of this {{production}} then requires the union of these {{skills}}. There is no separate list of required {{skills}} to keep in sync.",
     "slotGroupNamed": "Part: {{name}}",
     "slotGroupIndex": "Part {{index}}",
     "roleNameLabel": "Part name",
     "countLabel": "Count",
     "kindMain": "Main",
-    "kindUnderstudy": "Understudy",
+    "kindUnderstudy": "{{Understudy}}",
     "removeSlot": "Remove {{name}}",
     "slotFallback": "part",
-    "skillsEmptyHint": "No skills yet. Create the first one here.",
-    "skillsEmptyHintLocked": "No skills yet. An admin can add them in Settings.",
+    "skillsEmptyHint": "No {{skills}} yet. Create the first one here.",
+    "skillsEmptyHintLocked": "No {{skills}} yet. An admin can add them in Settings.",
     "addSlot": "Add part",
     "cities": {
-      "heading": "Cities you play",
-      "sub": "Cities are shared across every production. Add one here so it is ready when you schedule a date.",
+      "heading": "Cities you work in",
+      "sub": "Cities are shared across every {{production}}. Add one here so it is ready when you schedule {{showDates}}.",
       "new": "New city",
       "nameLabel": "City name",
       "create": "Add city",
@@ -89,8 +89,8 @@
     "save": "Save",
     "create": "Create",
     "callout": {
-      "withSkills": "Every date of this production will require {{skillNames}}. A single date can still add or drop a skill without changing the production.",
-      "none": "No skills are required yet. Add skills to a part to require them on every date."
+      "withSkills": "Every {{showDate}} of this {{production}} will require {{skillNames}}. A single {{showDate}} can still add or drop one {{skill}} without changing the {{production}}.",
+      "none": "No {{skills}} are required yet. Add {{skills}} to a part to require them on every {{showDate}}."
     },
     "validation": {
       "programOrSubRequired": "Program or sub-program required"
@@ -98,9 +98,9 @@
     "toasts": {
       "saveSlotsFailed": "Failed to save parts",
       "noActiveOrg": "No active organization",
-      "updated": "Production updated",
-      "created": "Production created"
+      "updated": "{{Production}} updated",
+      "created": "{{Production}} created"
     },
-    "skillsLoadFailed": "We could not load your skills, so this list may be missing some. Reload the page and try again."
+    "skillsLoadFailed": "We could not load your {{skills}}, so this list may be missing some. Reload the page and try again."
   }
 }
