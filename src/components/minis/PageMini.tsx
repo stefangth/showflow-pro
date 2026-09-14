@@ -2,12 +2,14 @@ import type { ReactNode } from 'react';
 import { useAuth } from '@/features/auth/AuthContext';
 import { isImpersonating } from '@/features/auth/orgRoles';
 import { useLanguage } from '@/features/i18n/LanguageContext';
+import { useVocabulary } from '@/hooks/useVocabulary';
 import { useRailDismissed } from '@/components/setup/useRailDismissed';
 import { StatusPill } from '@/components/ui/status-pill';
 import { Metric } from '@/components/ui/metric';
 import { PageMiniCollapsed } from './PageMiniCollapsed';
 import { MINI_CHROME } from './miniChrome';
 import type { Lang } from '@/i18n/config';
+import { interpolateVocabulary, type Vocabulary } from '@/lib/orgKind';
 import { MINIS, resolveMiniRole, type MiniDef, type MiniRole, type RegisteredPageKey } from '@/lib/minis';
 import { ART } from './illustrations';
 
@@ -22,17 +24,18 @@ export interface PageMiniViewProps {
   dismissed: boolean;
   onHide: () => void;
   onResume: () => void;
+  vocab: Vocabulary;
 }
 
 /** Pure presentational frame — no auth/storage, so it renders in tests directly. */
-export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume }: PageMiniViewProps) {
+export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume, vocab }: PageMiniViewProps) {
   const steps = def.variants[role];
   if (!steps) return null;
 
   if (dismissed) {
     return (
       <PageMiniCollapsed
-        label={def.eyebrow[lang]}
+        label={interpolateVocabulary(def.eyebrow[lang], vocab)}
         hint={MINI_CHROME.resumeHint[lang]}
         ctaLabel={MINI_CHROME.resumeCta[lang]}
         onOpen={onResume}
@@ -41,11 +44,11 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
   }
 
   return (
-    <section className="rounded-card border-[0.5px] border-border bg-card p-4" aria-label={def.eyebrow[lang]}>
+    <section className="rounded-card border-[0.5px] border-border bg-card p-4" aria-label={interpolateVocabulary(def.eyebrow[lang], vocab)}>
       <div className="flex items-center gap-3 pb-3">
         {/* eslint-disable-next-line no-restricted-syntax -- inline label sharing a flex row with the spacer/subnote/hide-button, not the sole child <Eyebrow> requires */}
         <span className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          {def.eyebrow[lang]}
+          {interpolateVocabulary(def.eyebrow[lang], vocab)}
         </span>
         {/* The illustrations below render invented tiers, people and audit lines. Labelled
             here, in the header row inside the `aria-label`led section, so a screen reader
@@ -53,7 +56,7 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
         <StatusPill tone="neutral">{MINI_CHROME.example[lang]}</StatusPill>
         <span className="flex-1" />
         {def.subnote && (
-          <span className="hidden text-caption text-muted-foreground/70 sm:inline">{def.subnote[lang]}</span>
+          <span className="hidden text-caption text-muted-foreground/70 sm:inline">{interpolateVocabulary(def.subnote[lang], vocab)}</span>
         )}
         <button
           type="button"
@@ -71,11 +74,11 @@ export function PageMiniView({ def, role, lang, art, dismissed, onHide, onResume
               <Metric className="text-caption font-semibold text-accent-600">{STEP_NUMBERS[i]}</Metric>
               {/* eslint-disable-next-line no-restricted-syntax -- step-number label shares a flex row with the numeral span, not the sole child <Eyebrow> requires */}
               <span className="text-eyebrow font-semibold uppercase tracking-[0.14em] text-accent-600">
-                {step.label[lang]}
+                {interpolateVocabulary(step.label[lang], vocab)}
               </span>
             </div>
             {art[i]}
-            <p className="text-pretty text-caption leading-4 text-muted-foreground">{step.text[lang]}</p>
+            <p className="text-pretty text-caption leading-4 text-muted-foreground">{interpolateVocabulary(step.text[lang], vocab)}</p>
           </div>
         ))}
       </div>
@@ -88,6 +91,7 @@ export function PageMini({ page }: { page: RegisteredPageKey }) {
   const def = MINIS[page];
   const { hasRole, isSuperAdmin, roles, viewAsRole, viewAsUser, currentOrg } = useAuth();
   const { lang } = useLanguage();
+  const vocab = useVocabulary();
   const orgId = currentOrg?.id ?? null;
   const [dismissed, dismiss, undismiss] = useRailDismissed(`mini.${page}`, orgId);
 
@@ -107,6 +111,7 @@ export function PageMini({ page }: { page: RegisteredPageKey }) {
       dismissed={dismissed}
       onHide={dismiss}
       onResume={undismiss}
+      vocab={vocab}
     />
   );
 }

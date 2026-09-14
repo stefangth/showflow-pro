@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import type { Lang } from '@/i18n/config';
 import type { HelpItem } from '@/lib/help/items';
 import { Token } from '@/components/ui/token';
+import { interpolateVocabulary } from '@/lib/orgKind';
+import { useVocabulary } from '@/hooks/useVocabulary';
 
 export function HelpItemRow({
   item,
@@ -16,6 +18,7 @@ export function HelpItemRow({
   onToggle: () => void;
 }) {
   const { t } = useTranslation('help');
+  const vocab = useVocabulary();
   return (
     // The id is the scroll anchor for `/help?item=<id>` deep links (see HelpPage).
     <div id={`help-${item.id}`} className="border-b-[0.5px] border-border last:border-b-0">
@@ -24,7 +27,7 @@ export function HelpItemRow({
         aria-expanded={open}
         className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-hover-tint"
       >
-        <span className="min-w-0 flex-1 text-sm font-medium text-foreground">{item.q[lang]}</span>
+        <span className="min-w-0 flex-1 text-sm font-medium text-foreground">{interpolateVocabulary(item.q[lang], vocab)}</span>
         {item.status === 'new' ? (
           <span className="shrink-0 rounded bg-accent-tint px-1.5 py-0.5 text-eyebrow font-semibold text-accent-text">
             {t('badge.new')}
@@ -40,7 +43,7 @@ export function HelpItemRow({
       </button>
       {open && (
         <div className="animate-in fade-in slide-in-from-top-1 px-4 pb-4 duration-150">
-          <p className="mb-2.5 max-w-[78ch] text-sm leading-relaxed text-foreground">{item.a[lang]}</p>
+          <p className="mb-2.5 max-w-[78ch] text-sm leading-relaxed text-foreground">{interpolateVocabulary(item.a[lang], vocab)}</p>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded bg-well-tint px-1.5 py-0.5 text-eyebrow text-muted-foreground">
               {item.surface}
