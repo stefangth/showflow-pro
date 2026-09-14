@@ -23,15 +23,36 @@ const strictness = {
   "@typescript-eslint/no-explicit-any": "error",
 };
 
-// eslint-plugin-react-hooks v7 expands its `recommended` preset to the full
-// React Compiler rule family (react-hooks/refs, set-state-in-effect,
-// immutability, purity, ...). Adopting those is a deliberate lint-policy change
-// that would require a codebase-wide sweep, so it belongs in its own PR — not in
-// this eslint 9 -> 10 dependency bump. We pin the exact two rules the plugin's
-// v5 `recommended` enforced, keeping the zero-warning gate's coverage unchanged.
+// eslint-plugin-react-hooks v7's `recommended` preset is the full React Compiler
+// rule family (rules-of-hooks, exhaustive-deps, set-state-in-effect, refs,
+// immutability, purity, globals, ...). We adopt it: the lint script runs
+// --max-warnings 0, so both the error- and warn-level rules are enforced.
 const reactHooksRules = {
-  "react-hooks/rules-of-hooks": "error",
-  "react-hooks/exhaustive-deps": "warn",
+  ...reactHooks.configs.recommended.rules,
+  // `incompatible-library` is a React Compiler adoption advisory ("Compilation
+  // Skipped: Use of incompatible library") — it fires on react-hook-form's
+  // watch/register/handleSubmit. This project builds with @vitejs/plugin-react-swc,
+  // NOT the React Compiler, so the advisory has no runtime meaning here and
+  // react-hook-form is fully supported. Off.
+  "react-hooks/incompatible-library": "off",
+};
+
+// The React Compiler correctness rules target authored component render/effects.
+// Two file groups aren't that: src/components/ui/** is vendored shadcn (regenerated,
+// never hand-edited per CLAUDE.md) and test files exercise harness/probe code that
+// no compiler optimizes. Keep rules-of-hooks + exhaustive-deps on for both; switch
+// off the compiler subset that otherwise fights generated primitives and test probes.
+const reactCompilerRulesOff = {
+  "react-hooks/set-state-in-effect": "off",
+  "react-hooks/set-state-in-render": "off",
+  "react-hooks/refs": "off",
+  "react-hooks/immutability": "off",
+  "react-hooks/purity": "off",
+  "react-hooks/globals": "off",
+  "react-hooks/static-components": "off",
+  "react-hooks/use-memo": "off",
+  "react-hooks/preserve-manual-memoization": "off",
+  "react-hooks/error-boundaries": "off",
 };
 
 export default tseslint.config(
@@ -94,11 +115,17 @@ export default tseslint.config(
       ...strictness,
     },
   },
-  // eslint 10 promotes `no-useless-assignment` into `js.configs.recommended`.
-  // The few sites it flags are deliberate default-init-then-overwrite idioms
-  // (documented in place). Turning the newly-added core rule on across the app
-  // is a separate policy decision, so keep it off here to preserve the prior
-  // enforced rule set through the eslint 9 -> 10 bump.
-  { rules: { "no-useless-assignment": "off" } },
+  // Vendored shadcn primitives: React Compiler correctness rules off (see above).
+  {
+    files: ["src/components/ui/**"],
+    plugins: { "react-hooks": reactHooks },
+    rules: reactCompilerRulesOff,
+  },
+  // Test harness/probe code: React Compiler correctness rules off (see above).
+  {
+    files: ["**/*.test.{ts,tsx}", "src/test/**"],
+    plugins: { "react-hooks": reactHooks },
+    rules: reactCompilerRulesOff,
+  },
   uiConventions,
 );

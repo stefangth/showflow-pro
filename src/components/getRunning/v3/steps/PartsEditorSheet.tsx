@@ -61,9 +61,17 @@ export function PartsEditorSheet({
   // ShowFormDialog's `slotsSeededForRef`.
   const seededForRef = useRef<string | null>(null);
 
+  // Open/close session seeding: reset on close, then seed once from the fetch,
+  // ref-keyed on the open transition so a mid-session refetch never clobbers
+  // in-progress edits. This is external-system synchronization (Radix keeps the
+  // dialog mounted across close/reopen), not derived state — the render-time
+  // "adjust during render" form observably double-renders here, so it stays an
+  // effect. Only the reset-to-empty on close trips set-state-in-effect (the seed
+  // from query data is an allowed external sync).
   useEffect(() => {
     if (!open) {
       seededForRef.current = null;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on close discards unsaved edits; see above
       setSlots([]);
       return;
     }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -237,23 +237,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
     queryFn: () => resolveOrgSetting<OrderDefaultsLite>(supabase, orgId, "hire_order_defaults", DEFAULTS_FALLBACK),
     enabled: !!orgId,
   });
-  const seededDefaultsRef = useRef(false);
-  useEffect(() => {
-    if (defaultsQuery.data && !seededDefaultsRef.current) {
-      seededDefaultsRef.current = true;
-      setCurrency(defaultsQuery.data.currency);
-      if (defaultsQuery.data.default_fee != null) setFee(String(defaultsQuery.data.default_fee));
-      // Validate, do not just null-check: a garbage stored basis would seed an invalid
-      // wizard state that the server's own isFeeBasis gate then rejects with a 400,
-      // breaking submission with no clue why. Matches OrderDefaultsCard's read.
-      // Validate, do not just null-check: a garbage stored basis would seed an invalid
-      // wizard state that the server's own isFeeBasis gate then rejects with a 400,
-      // breaking submission with no clue why. Matches OrderDefaultsCard's read.
-      if (isFeeBasis(defaultsQuery.data.default_fee_basis)) {
-        setFeeBasis(defaultsQuery.data.default_fee_basis);
-      }
-    }
-  }, [defaultsQuery.data]);
+  const [defaultsSeeded, setDefaultsSeeded] = useState(false);
 
   const [step, setStep] = useState<WizardStep>(1);
   const [manualMode, setManualMode] = useState(false);
@@ -275,13 +259,28 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   const [submitting, setSubmitting] = useState<"draft" | "issue" | null>(null);
   const [result, setResult] = useState<WizardResult | null>(null);
 
+  // Seed the fee fields from the org defaults once the query resolves — a single
+  // shot that never fights later edits. React's "adjust state during render"
+  // pattern (guarded, converges) instead of a setState-in-effect.
+  if (defaultsQuery.data && !defaultsSeeded) {
+    setDefaultsSeeded(true);
+    setCurrency(defaultsQuery.data.currency);
+    if (defaultsQuery.data.default_fee != null) setFee(String(defaultsQuery.data.default_fee));
+    // Validate, do not just null-check: a garbage stored basis would seed an invalid
+    // wizard state that the server's own isFeeBasis gate then rejects with a 400,
+    // breaking submission with no clue why. Matches OrderDefaultsCard's read.
+    if (isFeeBasis(defaultsQuery.data.default_fee_basis)) {
+      setFeeBasis(defaultsQuery.data.default_fee_basis);
+    }
+  }
+
   function resetForm() {
     setStep(1); setManualMode(false); setSelectedArtistIds([]); setSelectedShowDateIds([]); setArtistDateIds({});
     setManualArtistName(""); setManualEmail(""); setManualDate(""); setManualVenue(""); setManualCity("");
     setFee(""); setFeeBasis("per_date"); setDurationMin(""); setManualSessions([{ label: "", time: "" }]);
     setDateSchedules({});
     setSubmitting(null); setResult(null);
-    seededDefaultsRef.current = false; setCurrency("EUR");
+    setDefaultsSeeded(false); setCurrency("EUR");
   }
 
   function handleOpenChange(next: boolean) {
@@ -396,7 +395,15 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
   // assigned date from its synced sessions/duration, drop one no longer assigned,
   // and preserve edits for a date that stays assigned. Compares keys (not values)
   // so it never fights a producer's in-progress edits or loops.
-  useEffect(() => {
+  // Keep the per-date running orders in step with the assigned set: seed a newly
+  // assigned date from its synced sessions/duration, drop one no longer assigned,
+  // and preserve edits for a date that stays assigned. Render-time guarded state
+  // adjustment keyed on the assigned set, instead of a setState-in-effect — the
+  // functional updater still preserves in-progress edits and never loops.
+  const assignedKey = assignedDateIds.join(",");
+  const [schedulesKey, setSchedulesKey] = useState("");
+  if (assignedKey !== schedulesKey) {
+    setSchedulesKey(assignedKey);
     setDateSchedules((current) => {
       const desired = new Set(assignedDateIds);
       const needsAdd = assignedDateIds.some((id) => !(id in current));
@@ -408,7 +415,7 @@ export function NewOrderWizard({ open, onOpenChange, orgId }: Props) {
       }
       return next;
     });
-  }, [assignedDateIds, showDates]);
+  }
 
   const canContinueStep1 = manualMode
     ? manualArtistName.trim() !== ""

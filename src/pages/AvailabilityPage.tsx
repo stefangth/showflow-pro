@@ -95,16 +95,15 @@ function ArtistAvailability() {
   // bare visit and the filtered deep link open on the same actionable queue. An
   // explicit `?lens=` still takes priority when present (deep-linking straight to
   // Month/All dates), matching ShowsBookingsPage's `?status=`/`?lens=` handling.
-  const [lens, setLens] = useState<ArtistLens>('offers');
-  useEffect(() => {
+  // Seed the lens from the URL at init instead of a mount setState-in-effect. An
+  // explicit `?lens=` wins; otherwise (a bare visit or `?filter=unanswered`) the
+  // actionable offers queue is the default.
+  const [lens, setLens] = useState<ArtistLens>(() => {
     const lensParam = searchParams.get('lens');
-    if (lensParam === 'offers' || lensParam === 'month' || lensParam === 'all-dates') {
-      setLens(lensParam);
-    } else if (searchParams.get('filter') === 'unanswered') {
-      setLens('offers');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return lensParam === 'offers' || lensParam === 'month' || lensParam === 'all-dates'
+      ? lensParam
+      : 'offers';
+  });
   const updateLens = (key: string) => {
     setLens(key as ArtistLens);
     const next = new URLSearchParams(searchParams);

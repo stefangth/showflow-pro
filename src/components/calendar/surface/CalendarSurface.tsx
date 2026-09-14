@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { format } from 'date-fns';
@@ -347,10 +347,13 @@ export function CalendarSurface({
   // Same reasoning for the Needs-you scope-chip filter: leaving the lens with
   // e.g. "Cancelled" selected and returning later to a silently-filtered
   // queue would be confusing, so it resets to "All" on any lens change too.
-  useEffect(() => {
+  // Adjust-during-render on lens change instead of a setState-in-effect.
+  const [prevLens, setPrevLens] = useState(lens);
+  if (lens !== prevLens) {
+    setPrevLens(lens);
     setRange(null);
     setNeedsYouScope('all');
-  }, [lens]);
+  }
 
   // A selected scope's group can empty out from under the user on a refetch
   // (e.g. the last "at risk" date gets confirmed elsewhere). `ScopeChips`
@@ -358,11 +361,10 @@ export function CalendarSurface({
   // left pointing at a chip that's no longer rendered — no chip shows
   // active, and the queue body silently filters to nothing with no
   // explanation. Snap back to "All" the moment the selected group hits zero.
-  useEffect(() => {
-    if (needsYouScope !== 'all' && resolvedNeedsYouQueue.countByGroup[needsYouScope] === 0) {
-      setNeedsYouScope('all');
-    }
-  }, [needsYouScope, resolvedNeedsYouQueue.countByGroup]);
+  // Snap back during render (guarded, converges) instead of a setState-in-effect.
+  if (needsYouScope !== 'all' && resolvedNeedsYouQueue.countByGroup[needsYouScope] === 0) {
+    setNeedsYouScope('all');
+  }
 
   // Every producer entry id for a given date key, in entry order — a day can
   // hold more than one entry (two shows on the same day; the Season lens

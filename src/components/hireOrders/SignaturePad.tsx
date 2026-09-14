@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import SignaturePadLib from "signature_pad";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,8 +24,11 @@ export function SignaturePad({ value, onChange, disabled }: Props) {
   const { t } = useTranslation("hireOrdersPages");
   const typed = value?.method === "typed" ? value.typedName : "";
   const padRef = useRef<SignaturePadLib | null>(null);
+  // Latest-callback ref so the stable (deps: []) `setCanvas` callback ref and the
+  // pad's endStroke handler always call the current `onChange` without rebuilding
+  // the pad. Updated in an effect, not during render (react-hooks/refs).
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => { onChangeRef.current = onChange; });
 
   // Radix doesn't render <TabsContent value="draw"> (and thus the <canvas>) until the
   // user activates that tab, so a mount-once effect keyed on a ref would see a null

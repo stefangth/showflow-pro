@@ -37,6 +37,10 @@ export function EmailPreviewPane({
 
   useEffect(() => {
     const id = ++runId.current;
+    // Debounced async preview render (external-system sync): pending/error must reset
+    // the moment the debounce starts, so these synchronous resets are correct here,
+    // not the derived state set-state-in-effect targets.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPending(true);
     setError(null);
     const timer = window.setTimeout(async () => {

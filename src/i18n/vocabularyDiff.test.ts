@@ -26,7 +26,7 @@ run("production-vocabulary diff against origin/main", () => {
       applyVocabulary(i18n, "production", lang);
       const diffs: string[] = [];
       for (const ns of Object.keys(resources[lang])) {
-        let before: Record<string, string> = {};
+        let before: Record<string, string>;
         try { before = flat(JSON.parse(execSync(`git show origin/main:src/i18n/locales/${lang}/${ns}.json`, { encoding: "utf8" }))); } catch { continue; }
         for (const [key, old] of Object.entries(before)) {
           const now = i18n.t(key, { ns, lng: lang });

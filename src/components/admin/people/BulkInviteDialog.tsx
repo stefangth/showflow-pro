@@ -1,5 +1,5 @@
 // src/components/admin/people/BulkInviteDialog.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useAuth } from "@/features/auth/AuthContext";
@@ -46,9 +46,13 @@ export function BulkInviteDialog({ open, onOpenChange, members, invites, dedupeH
   const [sending, setSending] = useState(false);
 
   // Clear the paste + role when the dialog closes so a reopen starts fresh.
-  useEffect(() => {
+  // Adjust-during-render on the open->closed transition instead of a
+  // setState-in-effect.
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (!open) { setText(""); setRole("artist"); }
-  }, [open]);
+  }
 
   const rows = useMemo(() => {
     return parseEmails(text).map((email) => {

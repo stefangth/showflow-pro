@@ -377,13 +377,14 @@ export default function AcceptInvitePage() {
   // harmless cache-warming read for their prior org.
   const getRunning = useGetRunning();
 
+  // A missing token once auth has loaded is a pure derived error — set it during
+  // render (guarded, converges) instead of synchronously inside the effect below.
+  if (!loading && !token && !error) {
+    setError({ key: 'acceptInvite.errors.missingToken', action: null });
+  }
+
   useEffect(() => {
-    if (loading) return;
-    if (!token) {
-      setError({ key: 'acceptInvite.errors.missingToken', action: null });
-      return;
-    }
-    if (!user) return;
+    if (loading || !token || !user) return;
     if (ran.current) return;
     ran.current = true;
     const acceptingUserId = user.id;

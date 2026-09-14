@@ -232,6 +232,9 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
     // A deep link satisfies the once-per-mount auto-open too, so the effect below does not
     // then yank the viewer to the first blocking step instead.
     autoOpenedRef.current = true;
+    // Ref-guarded navigation driven by async `model` data arriving (external-system
+    // sync), not derived state — a setState here is correct.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedPhase(owner.key);
     setSelectedStep(target);
   }, [model, stepParam]);
@@ -247,6 +250,9 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
     autoOpenedRef.current = true;
     const step = firstBlockingStep(model);
     if (step) {
+      // Once-per-mount auto-open driven by async `model` data (external-system sync),
+      // not derived state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedPhase(step.phase);
       setSelectedStep(step.key);
     }
@@ -299,7 +305,10 @@ export function GetRunningBoardV3({ context }: { context: "page" | "settings" })
     if (!seen || seen.key !== step.key || seen.done || !step.done) return;
     const advance = advanceAfterStep(model, selectedPhase, step.key);
     if (!advance) return;
+    // Phase-handoff navigation driven by a step-completion transition tracked across
+    // renders via lastSeenRef (external-system/prior-state sync), not derived state.
     if (advance.kind === "next") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedStep(advance.key);
       return;
     }

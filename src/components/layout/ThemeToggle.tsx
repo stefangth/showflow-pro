@@ -1,7 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 import { Sun, Monitor, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const noop = () => () => {};
+/** True only after client hydration. useSyncExternalStore returns the server
+ *  snapshot (false) through hydration, then the client snapshot (true), which
+ *  avoids a setState-in-effect while still dodging the theme hydration mismatch. */
+function useHydrated() {
+  return useSyncExternalStore(noop, () => true, () => false);
+}
 
 const OPTIONS = [
   { value: 'light', icon: Sun, label: 'Light theme' },
@@ -12,8 +20,7 @@ const OPTIONS = [
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   // Avoid a hydration/first-paint mismatch: `theme` is undefined until mounted.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useHydrated();
 
   return (
     <div

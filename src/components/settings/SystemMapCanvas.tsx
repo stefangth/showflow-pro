@@ -105,10 +105,9 @@ export function SystemMapCanvas() {
 
   const selectedNode = selectedId ? nodesById.get(selectedId) ?? null : null;
 
-  // Close a stale detail panel when its node is filtered out of view.
-  useEffect(() => {
-    if (selectedId && !visibleIds.has(selectedId)) setSelectedId(null);
-  }, [visibleIds, selectedId]);
+  // Close a stale detail panel when its node is filtered out of view. Guarded
+  // during render (converges) instead of a setState-in-effect.
+  if (selectedId && !visibleIds.has(selectedId)) setSelectedId(null);
 
   useEffect(() => {
     function recompute() {

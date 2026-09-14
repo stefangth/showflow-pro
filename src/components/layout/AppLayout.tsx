@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/AuthContext';
@@ -84,8 +84,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const getRunningNavVisible = useGetRunningNavVisible();
 
   // The account-menu Popover lives only in the expanded sidebar. Reset its open
-  // state when collapsing so it doesn't auto-pop on the next expand.
-  useEffect(() => { if (collapsed) setProfileMenuOpen(false); }, [collapsed]);
+  // state when collapsing so it doesn't auto-pop on the next expand. Adjust-during-
+  // render on the collapse transition instead of a setState-in-effect.
+  const [prevCollapsed, setPrevCollapsed] = useState(collapsed);
+  if (collapsed !== prevCollapsed) {
+    setPrevCollapsed(collapsed);
+    if (collapsed) setProfileMenuOpen(false);
+  }
 
   // language_packages ships dark: force the runtime to English unless the org is entitled,
   // WITHOUT touching the user's stored language (so a later entitlement flip restores it).

@@ -60,7 +60,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   let idempotencyKey: string
   let messageId: string
   let templateData: TemplateData = {}
-  let orgId: string | null = null
+  let orgId: string | null
   let attachments: EmailAttachment[] | undefined
   // An explicit locale forces the email language (still entitlement-gated in
   // resolveOrgLocale); undefined means "resolve the org's live org_language".

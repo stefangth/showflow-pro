@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,7 +62,13 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
   // id could sit in `selected` unrevalidated against its current status and
   // still reach the issue mutation. Returning the same Set reference when
   // nothing changed is a no-op setState (React bails out of the re-render).
-  useEffect(() => {
+  // Adjust-during-render keyed on the visible id set instead of a
+  // setState-in-effect. The functional updater still returns the same Set
+  // reference when nothing changed, so React bails out of the re-render.
+  const ordersKey = orders.map((o) => o.id).join(",");
+  const [prunedKey, setPrunedKey] = useState(ordersKey);
+  if (ordersKey !== prunedKey) {
+    setPrunedKey(ordersKey);
     setSelected((prev) => {
       const visibleIds = new Set(orders.map((o) => o.id));
       let changed = false;
@@ -73,7 +79,7 @@ export function OrdersTable({ orders, orgId, onRowClick }: Props) {
       }
       return changed ? next : prev;
     });
-  }, [orders]);
+  }
 
   const allSelected = orders.length > 0 && orders.every((o) => selected.has(o.id));
   const someSelected = selected.size > 0;

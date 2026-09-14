@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 /**
  * Latch a value the first time `ready` becomes true, computing it from
@@ -14,10 +14,9 @@ export function useLatchedOnReady<T>(
   seed: T | null = null,
 ): [T | null, (v: T) => void] {
   const [value, setValue] = useState<T | null>(seed);
-  useEffect(() => {
-    if (value === null && ready) setValue(computeInitial());
-    // computeInitial is read once at latch time by design — not a dep.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, ready]);
+  // Latch the initial value once `ready`, using React's adjust-during-render
+  // pattern (guarded, converges) instead of a setState-in-effect. computeInitial
+  // is read exactly once at latch time by design.
+  if (value === null && ready) setValue(computeInitial());
   return [value, setValue];
 }

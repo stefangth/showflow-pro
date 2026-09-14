@@ -21,13 +21,13 @@ export default function UnsubscribePage() {
   // State initialization happens during render, before any analytics effect can
   // observe the URL. Keep the opaque credential in memory for this page only.
   const [token] = useState(() => captureUnsubscribeToken(window.location, window.history));
-  const [state, setState] = useState<State>({ kind: 'loading' });
+  // Derive the no-token case at init instead of setState-in-effect: token is
+  // captured once at mount and never changes.
+  const [state, setState] = useState<State>(() =>
+    token ? { kind: 'loading' } : { kind: 'invalid', message: 'Missing unsubscribe token.' });
 
   useEffect(() => {
-    if (!token) {
-      setState({ kind: 'invalid', message: 'Missing unsubscribe token.' });
-      return;
-    }
+    if (!token) return;
     (async () => {
       try {
         const res = await fetch(

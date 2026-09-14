@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Eye, EyeOff, GripHorizontal, RotateCcw, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,11 +38,18 @@ export function ColumnLayoutEditor({ pageKey }: ColumnLayoutEditorProps) {
 
   const defs = useMemo(() => getColumnDefs(pageKey), [getColumnDefs, pageKey]);
 
-  // Sync draft whenever role or saved templates change
-  useEffect(() => {
+  // Sync draft whenever role or saved templates change (including the initial mount).
+  // Adjust-during-render tracking the same three inputs the effect depended on
+  // (getColumnTemplate's identity changes when the saved templates change), instead of
+  // a setState-in-effect. Editing only mutates `draft`/`dirty`, so an in-progress edit
+  // is preserved until one of these inputs actually changes.
+  const [syncDeps, setSyncDeps] =
+    useState<readonly [typeof pageKey, AppRole, typeof getColumnTemplate] | null>(null);
+  if (!syncDeps || syncDeps[0] !== pageKey || syncDeps[1] !== effectiveRole || syncDeps[2] !== getColumnTemplate) {
+    setSyncDeps([pageKey, effectiveRole, getColumnTemplate]);
     setDraft(getColumnTemplate(pageKey, effectiveRole));
     setDirty(false);
-  }, [pageKey, effectiveRole, getColumnTemplate]);
+  }
 
   const sorted = useMemo(() => [...draft].sort((a, b) => a.order - b.order), [draft]);
 

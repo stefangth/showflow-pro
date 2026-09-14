@@ -219,29 +219,28 @@ export default function HireOrderEditPage() {
   // here the seed also primes `clearedFields` and `termsVariant`, and a second
   // effect re-seeds the variant once the org's terms resolve, so gating the render
   // on the seed closes the same window without unpicking that.
+  // Hydrate the editor state from the order once it loads, using React's
+  // adjust-during-render pattern (guarded by `hydrated`, converges) instead of a
+  // setState-in-effect. `terms` is read only for its effective-default fallback on
+  // this first seed; the dedicated re-seed below corrects the selection once the
+  // REAL terms setting resolves for an order with no stored variant.
   const [hydrated, setHydrated] = useState(false);
-  useEffect(() => {
-    if (order && !hydrated) {
-      setHydrated(true);
-      const data = (order.data ?? {}) as OrderData;
-      setResolvedData(data);
-      setTermsVariant(order.terms_variant || defaultTemplateId(terms) || "");
-      // A field previously saved as an explicit empty manual value is the
-      // durable, on-the-record marker for "the user cleared this" — restore
-      // clearedFields from it so a reload doesn't let the field silently
-      // revert to its showflow/sheet/default fallback.
-      const initiallyCleared = new Set<EditableOrderFieldKey>();
-      for (const key of ORDER_FIELD_KEYS) {
-        const field = data[key];
-        if (field && field.source === "manual" && field.value === "") initiallyCleared.add(key);
-      }
-      if (initiallyCleared.size > 0) setClearedFields(initiallyCleared);
+  if (order && !hydrated) {
+    setHydrated(true);
+    const data = (order.data ?? {}) as OrderData;
+    setResolvedData(data);
+    setTermsVariant(order.terms_variant || defaultTemplateId(terms) || "");
+    // A field previously saved as an explicit empty manual value is the
+    // durable, on-the-record marker for "the user cleared this" — restore
+    // clearedFields from it so a reload doesn't let the field silently
+    // revert to its showflow/sheet/default fallback.
+    const initiallyCleared = new Set<EditableOrderFieldKey>();
+    for (const key of ORDER_FIELD_KEYS) {
+      const field = data[key];
+      if (field && field.source === "manual" && field.value === "") initiallyCleared.add(key);
     }
-    // `terms` is read only for its effective-default fallback on the very first
-    // seed (guarded by `hydrated`, so a later terms refetch never re-runs this
-    // block) -- the dedicated re-seed effect below corrects the selection once
-    // the REAL terms setting resolves for an order with no stored variant.
-  }, [order, terms, hydrated]);
+    if (initiallyCleared.size > 0) setClearedFields(initiallyCleared);
+  }
 
   // The seed above may have used the HIRE_ORDER_DEFAULT_TERMS fallback (id
   // "standard") for `termsVariant` because the org's real terms setting was
@@ -253,10 +252,16 @@ export default function HireOrderEditPage() {
   // reference still shows as removed.
   const variantTouchedRef = useRef(false);
   const variantSeededRef = useRef(false);
+  // One-time re-seed once the org's real terms setting resolves. Ref-coordinated
+  // (variantTouchedRef guards against clobbering a manual pick; variantSeededRef makes
+  // it once-only) and driven by async termsQuery.data arriving — external-system sync,
+  // not derived state. Reading those guard refs during render is itself disallowed, so
+  // this stays an effect.
   useEffect(() => {
     if (!order || order.terms_variant || variantTouchedRef.current || variantSeededRef.current) return;
     if (!termsQuery.data) return;
     variantSeededRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- async terms seeding; see above
     setTermsVariant(defaultTemplateId(termsQuery.data) ?? "");
   }, [order, termsQuery.data]);
 
@@ -334,10 +339,19 @@ export default function HireOrderEditPage() {
   // mount fetch's round trip) could otherwise resolve out of order and let
   // the stale mount preview overwrite a newer edit's preview in `previewSrc`.
   const latestRef = useRef({ order, orgId, isReadOnly, buildPatch, updateDraft, action, dirty });
-  latestRef.current = { order, orgId, isReadOnly, buildPatch, updateDraft, action, dirty };
+  // Keep the single-flight runner's view of state current without a render-time ref
+  // write (react-hooks/refs): a trailing rerun always reads the LATEST state, not
+  // whatever the timer's closure captured when it fired.
+  useEffect(() => {
+    latestRef.current = { order, orgId, isReadOnly, buildPatch, updateDraft, action, dirty };
+  });
 
+  // The single-flight runner is created once, inside a mount effect (not during
+  // render), so it never references a ref during render (react-hooks/refs). Its
+  // only callers are the two effects below, which run after it is set. It reads
+  // latestRef.current at call time and setPreviewSrc is stable.
   const runPreviewCycleRef = useRef<(() => void) | null>(null);
-  if (runPreviewCycleRef.current === null) {
+  useEffect(() => {
     runPreviewCycleRef.current = createSingleFlightRunner(async () => {
       const {
         order: curOrder, orgId: curOrgId, isReadOnly: curReadOnly, buildPatch: curBuildPatch,
@@ -356,7 +370,7 @@ export default function HireOrderEditPage() {
            the explicit Save draft / Issue actions surface their own toasts */
       }
     });
-  }
+  }, []);
 
   // Initial live-preview render: fetch the stored order's PDF once on load
   // (before any edits), so the right column never sits empty. Goes through

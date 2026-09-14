@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -52,10 +52,13 @@ export function RunOfShowRail() {
   const reseedGen = useRef(0);
 
   // Keep the draft in sync when the underlying state changes from outside the input
-  // (a fresh scene load, a Reset, or another tab writing demo_state).
-  useEffect(() => {
+  // (a fresh scene load, a Reset, or another tab writing demo_state). Adjust-during-
+  // render on the external value instead of a setState-in-effect.
+  const [prevProspectLabel, setPrevProspectLabel] = useState(prospectLabel);
+  if (prospectLabel !== prevProspectLabel) {
+    setPrevProspectLabel(prospectLabel);
     setLabelDraft(prospectLabel ?? "");
-  }, [prospectLabel]);
+  }
 
   if (!isDemoOrg || isBarHidden || !canOperate) return null;
 

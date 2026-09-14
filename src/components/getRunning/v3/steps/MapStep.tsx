@@ -104,6 +104,10 @@ export function MapStep({
   // visitor having to step back.
   useEffect(() => {
     if (!isSheet || !sheetUrl || headers !== null || loadingHeaders) return;
+    // This is a genuine fetch-on-mount effect (synchronizing with an external
+    // system), not derived state: the loading flag must flip the instant the
+    // request starts, so a synchronous setState here is correct.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingHeaders(true);
     sheetImport
       .loadSheet(sheetUrl)
