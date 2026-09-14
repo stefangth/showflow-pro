@@ -617,3 +617,53 @@ Deno.test("preview: default locale renders English + <html lang=en>", async () =
   assertEquals(entry.html.includes('lang="en"'), true);
   assertEquals(entry.html.includes("Can you do this one?"), true);
 });
+
+// ── Workspace type (org_kind): explicit, non-org-tied preview vocabulary (admin QA) ──
+// body.kind lets an admin preview staffing wording without switching the org's own
+// org_kind. Coerced via coerceOrgKind, so unknown/absent → production (byte-identical).
+Deno.test("preview: body.kind 'staffing' renders staffing vocabulary (clients/people, not productions/artists)", async () => {
+  const res = await handle(
+    authedPostRequest({ templateName: "org-invitation", kind: "staffing" }),
+    adminDeps(),
+  );
+  assertEquals(res.status, 200);
+  const { templates } = await res.json() as {
+    templates: Array<{ templateName: string; status: string; html: string }>;
+  };
+  const entry = templates[0];
+  assertEquals(entry.status, "ready");
+  // org-invitation.productIntro: "... plans its {{productions}} and books the {{artists}} ..."
+  assertEquals(entry.html.includes("clients"), true, "staffing 'clients' substituted");
+  assertEquals(entry.html.includes("people"), true, "staffing 'people' substituted");
+  assertEquals(entry.html.includes("plans its productions"), false, "production noun not present");
+});
+
+Deno.test("preview: no body.kind renders production vocabulary (default, byte-identical)", async () => {
+  const res = await handle(
+    authedPostRequest({ templateName: "org-invitation" }),
+    adminDeps(),
+  );
+  assertEquals(res.status, 200);
+  const { templates } = await res.json() as {
+    templates: Array<{ templateName: string; status: string; html: string }>;
+  };
+  const entry = templates[0];
+  assertEquals(entry.status, "ready");
+  assertEquals(entry.html.includes("plans its productions and books the artists"), true);
+  assertEquals(entry.html.includes("clients"), false);
+});
+
+Deno.test("preview: unknown body.kind coerces to production", async () => {
+  const res = await handle(
+    authedPostRequest({ templateName: "org-invitation", kind: "circus" }),
+    adminDeps(),
+  );
+  assertEquals(res.status, 200);
+  const { templates } = await res.json() as {
+    templates: Array<{ templateName: string; status: string; html: string }>;
+  };
+  const entry = templates[0];
+  assertEquals(entry.status, "ready");
+  assertEquals(entry.html.includes("plans its productions and books the artists"), true);
+  assertEquals(entry.html.includes("clients"), false);
+});
