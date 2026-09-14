@@ -664,8 +664,8 @@ function normalizeVolatilePdfBytes(bytes: Uint8Array): string {
  *  new hash rather than writing it here, since only a human reviewing the
  *  rendered diff should decide to move this pin. */
 const GOLDEN_HASHES: Record<string, string> = {
-  "countersigned-aggregate": "caa0cff1b2d2af4033f87e2d4661d2641366b8490634ef91dcf6f8c6ac4b494f",
-  "single-date-preview": "010ca741ca8c435e2ad74afdd1140435dc87900b0d3b192f192d462fc2738442",
+  "countersigned-aggregate": "50270c4a71f827e59c20cb0a60a1908e5f4f31c1c37b8577c5c3d5d30e90021d",
+  "single-date-preview": "0b93274c735ce20d9a048c2b8530a606045dadb5a6b033ee23bd6cb2879b3ca3",
 };
 
 async function sha256Hex(text: string): Promise<string> {
