@@ -25,7 +25,7 @@
     "bodyAdmin": "Autopilot has asked everyone it can and the date is still {{count}} short, {{days}} days out. It needs a decision an admin has to make.",
     "exhaustedBody": "Autopilot has nobody left it can ask for this date, {{days}} days out. It is still {{count}} short. Only you can find a way forward now.",
     "exhaustedBodyAdmin": "Autopilot has nobody left it can ask for this date, {{days}} days out. It is still {{count}} short. Only an admin can find a way forward now.",
-    "openCastTitle": "Open it up to {{cast}}",
+    "openCastTitle": "Open it up to {{castName}}",
     "openCastNote_one": "{{count}} artist free that night. They would be asked tonight at {{time}}.",
     "openCastNote_other": "{{count}} artists free that night. They would be asked tonight at {{time}}.",
     "runShortTitle": "Run the show with {{count}} fewer",
@@ -48,7 +48,7 @@
   "bounced": {
     "title_one": "One ask did not arrive",
     "title_other": "{{count}} asks did not arrive",
-    "body": "The email to {{names}} bounced {{when}}, so they have not heard about {{show}}. Autopilot will not retry a bad address.",
+    "body": "The email to {{names}} bounced {{when}}, so they have not heard about {{showTitle}}. Autopilot will not retry a bad address.",
     "fix": "Fix their addresses",
     "later": "Later"
   },
@@ -63,17 +63,17 @@
     "title": "Done for you since {{day}}",
     "review": "Review",
     "undo": "Undo",
-    "book_one": "Booked {{names}} onto {{show}}, {{date}}. They said yes, so the part is theirs.",
-    "book_other": "Booked {{names}} onto {{show}}, {{date}}. They said yes, so the parts are theirs.",
-    "bookHold_one": "{{names}} said yes to {{show}}, {{date}}. Book them and the part is theirs.",
-    "bookHold_other": "{{names}} said yes to {{show}}, {{date}}. Book them and the parts are theirs.",
-    "bookHoldAdmin_one": "{{names}} said yes to {{show}}, {{date}}. An admin has to book them.",
-    "bookHoldAdmin_other": "{{names}} said yes to {{show}}, {{date}}. An admin has to book them.",
-    "ask_one": "Asked {{count}} artist about {{show}}, {{date}}.",
-    "ask_other": "Asked {{count}} artists about {{show}}, {{date}}.",
-    "draft_one": "Drafted {{count}} contract for {{show}}, {{date}}. They send when you are happy with them.",
-    "draft_other": "Drafted {{count}} contracts for {{show}}, {{date}}. They send when you are happy with them.",
-    "notify": "Told {{names}} that {{show}}, {{date}} is off.",
+    "book_one": "Booked {{names}} onto {{showTitle}}, {{date}}. They said yes, so the part is theirs.",
+    "book_other": "Booked {{names}} onto {{showTitle}}, {{date}}. They said yes, so the parts are theirs.",
+    "bookHold_one": "{{names}} said yes to {{showTitle}}, {{date}}. Book them and the part is theirs.",
+    "bookHold_other": "{{names}} said yes to {{showTitle}}, {{date}}. Book them and the parts are theirs.",
+    "bookHoldAdmin_one": "{{names}} said yes to {{showTitle}}, {{date}}. An admin has to book them.",
+    "bookHoldAdmin_other": "{{names}} said yes to {{showTitle}}, {{date}}. An admin has to book them.",
+    "ask_one": "Asked {{count}} artist about {{showTitle}}, {{date}}.",
+    "ask_other": "Asked {{count}} artists about {{showTitle}}, {{date}}.",
+    "draft_one": "Drafted {{count}} contract for {{showTitle}}, {{date}}. They send when you are happy with them.",
+    "draft_other": "Drafted {{count}} contracts for {{showTitle}}, {{date}}. They send when you are happy with them.",
+    "notify": "Told {{names}} that {{showTitle}}, {{date}} is off.",
     "theCast": "the cast"
   },
   "toast": {
@@ -85,8 +85,8 @@
     "bookingUndoneSuccess_other": "Undid {{count}} bookings. {{context}}",
     "bookingUndoneError": "Could not undo the booking. {{context}} Try again.",
     "bookingUndoneNothingChanged": "Nothing to undo. It already moved on, so refresh to see the latest.",
-    "castAskedSuccess": "Asked {{cast}} about {{title}}.",
-    "castAskedError": "Could not ask {{cast}} about {{title}}. Try again."
+    "castAskedSuccess": "Asked {{castName}} about {{title}}.",
+    "castAskedError": "Could not ask {{castName}} about {{title}}. Try again."
   },
   "sidebar": {
     "producer": {

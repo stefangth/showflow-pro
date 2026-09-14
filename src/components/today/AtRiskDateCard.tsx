@@ -71,7 +71,7 @@ export function AtRiskDateCard({
   if (canAsk && !item.exhausted && item.nextCastName) {
     options.push({
       key: "openCast",
-      title: t("atRisk.openCastTitle", { cast: item.nextCastName }),
+      title: t("atRisk.openCastTitle", { castName: item.nextCastName }),
       note: t("atRisk.openCastNote", { count: item.nextCastFreeCount, time: askTimeLabel }),
       buttonLabel: t("atRisk.doThis"),
       onClick: () => onOpenNextCast(item),

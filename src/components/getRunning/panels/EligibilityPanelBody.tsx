@@ -339,7 +339,7 @@ export function EligibilityPanelBody({
       {productions.length > 0 && (
         <UnlocksNote>
           {firstGap
-            ? t("panel.body.eligibility.unlocks", { count: firstGapCount, show: firstGapShowName })
+            ? t("panel.body.eligibility.unlocks", { count: firstGapCount, showTitle: firstGapShowName })
             : t("panel.body.eligibility.unlocksDone")}
         </UnlocksNote>
       )}

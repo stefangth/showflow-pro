@@ -150,7 +150,7 @@ export function OrgDataCard() {
             value={stats.data ? t('orgDataCard.recordsValue', { value: stats.data.bookings.toLocaleString() }) : ""}
             note={
               stats.data
-                ? t('orgDataCard.recordsNote', { artists: stats.data.artists, productions: stats.data.productions })
+                ? t('orgDataCard.recordsNote', { artistCount: stats.data.artists, productionCount: stats.data.productions })
                 : t('orgDataCard.recordsNoteFallback')
             }
             isLoading={stats.isLoading}
@@ -168,7 +168,7 @@ export function OrgDataCard() {
                       adminWord: t('orgDataCard.adminWord', { count: admins }),
                       producers,
                       producerLabel: roleLabel("producer").toLowerCase(),
-                      artists,
+                      artistCount: artists,
                       artistWord: t('orgDataCard.artistWord', { count: artists }),
                     })
                   : t('orgDataCard.membersNoteFallback')

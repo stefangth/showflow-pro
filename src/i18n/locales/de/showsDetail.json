@@ -197,7 +197,7 @@
   "eligibilityBookList": {
     "joinTwo": "{{a}} und {{b}}",
     "joinMany": "{{list}} und {{last}}",
-    "reqHasSkills": "Dieser Termin erfordert {{skills}}",
+    "reqHasSkills": "Dieser Termin erfordert {{skillNames}}",
     "reqNoSkills": "Dieser Termin hat keine Fähigkeitsanforderungen",
     "factSentence": "{{requirement}} · {{qualifying}} von {{total}} Artists qualifizieren sich und sind frei.",
     "error": "Wer angefragt werden kann, konnte nicht geladen werden. Lade die Seite neu, um es erneut zu versuchen.",
@@ -215,7 +215,7 @@
   },
   "requiredSkillsCard": {
     "title": "An diesem Termin erforderliche Fähigkeiten",
-    "computedFrom": "Berechnet aus den {{count}} Positionen in {{show}}. Nur Artists, die alle davon besitzen, können angefragt oder gebucht werden.",
+    "computedFrom": "Berechnet aus den {{count}} Positionen in {{showTitle}}. Nur Artists, die alle davon besitzen, können angefragt oder gebucht werden.",
     "droppedOnDate": "an diesem Termin entfernt",
     "addedOnDate": "an diesem Termin hinzugefügt",
     "noSkillsRequired": "Keine Fähigkeiten erforderlich.",
@@ -257,8 +257,8 @@
     "setUpNextCast": "Nächste Besetzung einrichten",
     "artistWord_one": "Artist",
     "artistWord_other": "Artists",
-    "bodyWithSkills_one": "{{matchCount}} von {{castTotal}} {{artistWord}} in {{label}} hat {{skills}}.",
-    "bodyWithSkills_other": "{{matchCount}} von {{castTotal}} {{artistWord}} in {{label}} haben {{skills}}.",
+    "bodyWithSkills_one": "{{matchCount}} von {{castTotal}} {{artistWord}} in {{label}} hat {{skillNames}}.",
+    "bodyWithSkills_other": "{{matchCount}} von {{castTotal}} {{artistWord}} in {{label}} haben {{skillNames}}.",
     "bodyAvailable_one": "{{matchCount}} von {{castTotal}} {{artistWord}} in {{label}} ist verfügbar.",
     "bodyAvailable_other": "{{matchCount}} von {{castTotal}} {{artistWord}} in {{label}} sind verfügbar.",
     "tier1Suffix": "{{first}} {{blocked}} nicht frei.",

@@ -115,9 +115,9 @@ export function cancelBookingCopy(args: {
 }): { title: string; understudyLine: string | null; whoHearsLine: string } {
   const { artistName, understudyPromotionEnabled, bookingFlowEnabled, flow, confirmationDigestHour, t } = args;
   return {
-    title: t("actionCopy.cancel.title", { artist: artistName }),
+    title: t("actionCopy.cancel.title", { artistName }),
     understudyLine: understudyPromotionEnabled
-      ? t("actionCopy.cancel.understudyLine", { artist: artistName })
+      ? t("actionCopy.cancel.understudyLine", { artistName })
       : null,
     whoHearsLine:
       scheduleChangeNote(bookingFlowEnabled, flow, confirmationDigestHour) ?? t("actionCopy.cancel.whoHearsFallback"),

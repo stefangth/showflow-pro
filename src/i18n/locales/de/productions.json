@@ -56,7 +56,7 @@
     "categoryLabel": "Kategorie",
     "descriptionLabel": "Beschreibung",
     "slotsHeading": "Besetzungsplan",
-    "slotTotals": "{{main}} Hauptbesetzung · {{understudy}} Zweitbesetzung",
+    "slotTotals": "{{main}} Hauptbesetzung · {{understudyCount}} Zweitbesetzung",
     "slotsHelp": "Benenne jede Position und gib ihr die nötigen Skills. Jeder Termin dieser Produktion braucht dann die Summe dieser Skills. Es gibt keine separate Liste erforderlicher Skills, die du pflegen musst.",
     "slotGroupNamed": "Position: {{name}}",
     "slotGroupIndex": "Position {{index}}",
@@ -89,7 +89,7 @@
     "save": "Speichern",
     "create": "Erstellen",
     "callout": {
-      "withSkills": "Jeder Termin dieser Produktion wird {{skills}} erfordern. Ein einzelner Termin kann trotzdem einen Skill ergänzen oder weglassen, ohne die Produktion zu ändern.",
+      "withSkills": "Jeder Termin dieser Produktion wird {{skillNames}} erfordern. Ein einzelner Termin kann trotzdem einen Skill ergänzen oder weglassen, ohne die Produktion zu ändern.",
       "none": "Es sind noch keine Skills erforderlich. Füge einer Position Skills hinzu, um sie für jeden Termin zu verlangen."
     },
     "validation": {

@@ -25,7 +25,7 @@
     "bodyAdmin": "Autopilot hat alle gefragt, die möglich sind, und dem Termin fehlen noch {{count}}, {{days}} Tage vorher. Hier muss ein Admin entscheiden.",
     "exhaustedBody": "Autopilot hat niemanden mehr, den es für diesen Termin fragen kann, {{days}} Tage im Voraus. Es fehlen noch {{count}}. Nur Du kannst jetzt einen Weg finden.",
     "exhaustedBodyAdmin": "Autopilot kann für diesen Termin niemanden mehr fragen, {{days}} Tage vorher. Es fehlen noch {{count}}. Nur ein Admin kann jetzt einen Weg finden.",
-    "openCastTitle": "{{cast}} mit dazu holen",
+    "openCastTitle": "{{castName}} mit dazu holen",
     "openCastNote_one": "{{count}} Artist ist an dem Abend frei und wird heute Abend um {{time}} gefragt.",
     "openCastNote_other": "{{count}} Artists sind an dem Abend frei und werden heute Abend um {{time}} gefragt.",
     "runShortTitle": "Mit {{count}} weniger spielen",
@@ -48,7 +48,7 @@
   "bounced": {
     "title_one": "Eine Anfrage ist nicht angekommen",
     "title_other": "{{count}} Anfragen sind nicht angekommen",
-    "body": "Die E-Mail an {{names}} ist {{when}} zurückgekommen, deshalb wissen sie noch nichts von {{show}}. Autopilot versucht es bei einer falschen Adresse nicht noch einmal.",
+    "body": "Die E-Mail an {{names}} ist {{when}} zurückgekommen, deshalb wissen sie noch nichts von {{showTitle}}. Autopilot versucht es bei einer falschen Adresse nicht noch einmal.",
     "fix": "Adressen korrigieren",
     "later": "Später"
   },
@@ -63,17 +63,17 @@
     "title": "Für Dich erledigt seit {{day}}",
     "review": "Prüfen",
     "undo": "Rückgängig",
-    "book_one": "{{names}} auf {{show}}, {{date}} gebucht. Sie haben zugesagt, die Position gehört ihnen.",
-    "book_other": "{{names}} auf {{show}}, {{date}} gebucht. Sie haben zugesagt, die Positionen gehören ihnen.",
-    "bookHold_one": "{{names}} hat zu {{show}}, {{date}} zugesagt. Buche jetzt, dann gehört die Position ihnen.",
-    "bookHold_other": "{{names}} haben zu {{show}}, {{date}} zugesagt. Buche jetzt, dann gehören die Positionen ihnen.",
-    "bookHoldAdmin_one": "{{names}} hat zu {{show}}, {{date}} zugesagt. Ein Admin muss buchen.",
-    "bookHoldAdmin_other": "{{names}} haben zu {{show}}, {{date}} zugesagt. Ein Admin muss buchen.",
-    "ask_one": "{{count}} Artist über {{show}}, {{date}} gefragt.",
-    "ask_other": "{{count}} Artists über {{show}}, {{date}} gefragt.",
-    "draft_one": "{{count}} Engagementvertrag für {{show}}, {{date}} entworfen. Er geht raus, sobald Du zufrieden bist.",
-    "draft_other": "{{count}} Engagementverträge für {{show}}, {{date}} entworfen. Sie gehen raus, sobald Du zufrieden bist.",
-    "notify": "{{names}} gesagt, dass {{show}}, {{date}} ausfällt.",
+    "book_one": "{{names}} auf {{showTitle}}, {{date}} gebucht. Sie haben zugesagt, die Position gehört ihnen.",
+    "book_other": "{{names}} auf {{showTitle}}, {{date}} gebucht. Sie haben zugesagt, die Positionen gehören ihnen.",
+    "bookHold_one": "{{names}} hat zu {{showTitle}}, {{date}} zugesagt. Buche jetzt, dann gehört die Position ihnen.",
+    "bookHold_other": "{{names}} haben zu {{showTitle}}, {{date}} zugesagt. Buche jetzt, dann gehören die Positionen ihnen.",
+    "bookHoldAdmin_one": "{{names}} hat zu {{showTitle}}, {{date}} zugesagt. Ein Admin muss buchen.",
+    "bookHoldAdmin_other": "{{names}} haben zu {{showTitle}}, {{date}} zugesagt. Ein Admin muss buchen.",
+    "ask_one": "{{count}} Artist über {{showTitle}}, {{date}} gefragt.",
+    "ask_other": "{{count}} Artists über {{showTitle}}, {{date}} gefragt.",
+    "draft_one": "{{count}} Engagementvertrag für {{showTitle}}, {{date}} entworfen. Er geht raus, sobald Du zufrieden bist.",
+    "draft_other": "{{count}} Engagementverträge für {{showTitle}}, {{date}} entworfen. Sie gehen raus, sobald Du zufrieden bist.",
+    "notify": "{{names}} gesagt, dass {{showTitle}}, {{date}} ausfällt.",
     "theCast": "die Besetzung"
   },
   "toast": {
@@ -85,8 +85,8 @@
     "bookingUndoneSuccess_other": "{{count}} Buchungen rückgängig gemacht. {{context}}",
     "bookingUndoneError": "Konnte die Buchung nicht rückgängig machen. {{context}} Versuch es noch einmal.",
     "bookingUndoneNothingChanged": "Nichts zum Rückgängigmachen. Es hat sich schon weiterbewegt, lade neu, um den aktuellen Stand zu sehen.",
-    "castAskedSuccess": "{{cast}} zu {{title}} gefragt.",
-    "castAskedError": "Konnte {{cast}} nicht zu {{title}} fragen. Versuch es noch einmal."
+    "castAskedSuccess": "{{castName}} zu {{title}} gefragt.",
+    "castAskedError": "Konnte {{castName}} nicht zu {{title}} fragen. Versuch es noch einmal."
   },
   "sidebar": {
     "producer": {

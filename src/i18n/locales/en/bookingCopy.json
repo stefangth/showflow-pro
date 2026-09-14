@@ -15,8 +15,8 @@
     "dateSourceNote": "You can add a date by hand here. If your workspace syncs from Airtable, those dates keep updating on their own, and a date you add here is not changed by a sync.",
     "unrestrictedEligibility": "This date has no cast limits, so anyone in {{org}} can be booked here.",
     "cancel": {
-      "title": "Cancel {{artist}}'s booking?",
-      "understudyLine": "If {{artist}} is in the main cast, the understudy who has been waiting longest and said yes moves up automatically.",
+      "title": "Cancel {{artistName}}'s booking?",
+      "understudyLine": "If {{artistName}} is in the main cast, the understudy who has been waiting longest and said yes moves up automatically.",
       "whoHearsFallback": "The artist is notified in the app."
     }
   },

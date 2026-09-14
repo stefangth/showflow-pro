@@ -56,7 +56,7 @@
     "categoryLabel": "Category",
     "descriptionLabel": "Description",
     "slotsHeading": "Casting breakdown",
-    "slotTotals": "{{main}} main · {{understudy}} understudy",
+    "slotTotals": "{{main}} main · {{understudyCount}} understudy",
     "slotsHelp": "Name each part and give it the skills it needs. Every date of this production then requires the union of these skills. There is no separate required-skills list to keep in sync.",
     "slotGroupNamed": "Part: {{name}}",
     "slotGroupIndex": "Part {{index}}",
@@ -89,7 +89,7 @@
     "save": "Save",
     "create": "Create",
     "callout": {
-      "withSkills": "Every date of this production will require {{skills}}. A single date can still add or drop a skill without changing the production.",
+      "withSkills": "Every date of this production will require {{skillNames}}. A single date can still add or drop a skill without changing the production.",
       "none": "No skills are required yet. Add skills to a part to require them on every date."
     },
     "validation": {

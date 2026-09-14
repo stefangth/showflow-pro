@@ -197,7 +197,7 @@
   "eligibilityBookList": {
     "joinTwo": "{{a}} and {{b}}",
     "joinMany": "{{list}}, and {{last}}",
-    "reqHasSkills": "This date requires {{skills}}",
+    "reqHasSkills": "This date requires {{skillNames}}",
     "reqNoSkills": "This date has no skill requirements",
     "factSentence": "{{requirement}} · {{qualifying}} of {{total}} artists qualify and are free.",
     "error": "Could not load who can be asked. Reload the page to try again.",
@@ -215,7 +215,7 @@
   },
   "requiredSkillsCard": {
     "title": "Skills required on this date",
-    "computedFrom": "Computed from the {{count}} parts on {{show}}. Only artists holding all of them can be asked or booked.",
+    "computedFrom": "Computed from the {{count}} parts on {{showTitle}}. Only artists holding all of them can be asked or booked.",
     "droppedOnDate": "dropped on this date",
     "addedOnDate": "added on this date",
     "noSkillsRequired": "No skills required.",
@@ -257,8 +257,8 @@
     "setUpNextCast": "Set up a next cast",
     "artistWord_one": "artist",
     "artistWord_other": "artists",
-    "bodyWithSkills_one": "{{matchCount}} of {{castTotal}} {{artistWord}} in {{label}} has {{skills}}.",
-    "bodyWithSkills_other": "{{matchCount}} of {{castTotal}} {{artistWord}} in {{label}} have {{skills}}.",
+    "bodyWithSkills_one": "{{matchCount}} of {{castTotal}} {{artistWord}} in {{label}} has {{skillNames}}.",
+    "bodyWithSkills_other": "{{matchCount}} of {{castTotal}} {{artistWord}} in {{label}} have {{skillNames}}.",
     "bodyAvailable_one": "{{matchCount}} of {{castTotal}} {{artistWord}} in {{label}} is available.",
     "bodyAvailable_other": "{{matchCount}} of {{castTotal}} {{artistWord}} in {{label}} are available.",
     "tier1Suffix": "{{first}} {{blocked}} not free.",

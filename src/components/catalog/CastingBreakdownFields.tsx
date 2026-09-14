@@ -81,7 +81,7 @@ export function CastingBreakdownFields({
   const mainTotal = value.filter((row) => row.kind === "main").reduce((a, row) => a + row.count, 0);
   const understudyTotal = value.filter((row) => row.kind === "understudy").reduce((a, row) => a + row.count, 0);
   const calloutText = unionNames.length > 0
-    ? t("form.callout.withSkills", { skills: unionNames.join(", ") })
+    ? t("form.callout.withSkills", { skillNames: unionNames.join(", ") })
     : t("form.callout.none");
 
   return (
@@ -89,7 +89,7 @@ export function CastingBreakdownFields({
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-sm font-medium">{t("form.slotsHeading")}</p>
         <Metric size="body" className="text-muted-foreground">
-          {t("form.slotTotals", { main: mainTotal, understudy: understudyTotal })}
+          {t("form.slotTotals", { main: mainTotal, understudyCount: understudyTotal })}
         </Metric>
       </div>
       <p className="text-xs text-muted-foreground">

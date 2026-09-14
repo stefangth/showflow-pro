@@ -35,7 +35,7 @@ export function BouncedAsksBanner({ bounced, onFix, onDismiss }: BouncedAsksBann
       <p className="m-0 flex-1 text-control leading-[19px] text-foreground">
         {t("bounced.title", { count: bounced.length })}
         {". "}
-        {t("bounced.body", { names, when, show: first.dateLabel })}
+        {t("bounced.body", { names, when, showTitle: first.dateLabel })}
       </p>
       <Button size="sm" onClick={onFix} className="shrink-0">
         {t("bounced.fix")}

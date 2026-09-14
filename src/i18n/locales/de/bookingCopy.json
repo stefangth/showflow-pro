@@ -15,8 +15,8 @@
     "dateSourceNote": "Du kannst hier einen Termin von Hand hinzufügen. Wenn dein Workspace mit Airtable synchronisiert, aktualisieren sich diese Termine von selbst, und ein Termin, den du hier hinzufügst, wird von einer Synchronisierung nicht verändert.",
     "unrestrictedEligibility": "Dieser Termin hat keine Besetzungsgrenzen, also kann jede Person in {{org}} hier gebucht werden.",
     "cancel": {
-      "title": "Buchung von {{artist}} stornieren?",
-      "understudyLine": "Wenn {{artist}} in der Hauptbesetzung ist, rückt die am längsten wartende Zweitbesetzung, die zugesagt hat, automatisch nach.",
+      "title": "Buchung von {{artistName}} stornieren?",
+      "understudyLine": "Wenn {{artistName}} in der Hauptbesetzung ist, rückt die am längsten wartende Zweitbesetzung, die zugesagt hat, automatisch nach.",
       "whoHearsFallback": "Der Artist wird in der App benachrichtigt."
     }
   },

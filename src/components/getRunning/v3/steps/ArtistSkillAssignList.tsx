@@ -90,7 +90,7 @@ export function ArtistSkillAssignList({ orgId, canEdit }: { orgId: string | null
                 <StatusPill tone="risk">{gap.name}</StatusPill>
                 <span>
                   {gap.productions.length > 0
-                    ? t("body.skills.gapLine", { productions: gap.productions.join(", ") })
+                    ? t("body.skills.gapLine", { productionNames: gap.productions.join(", ") })
                     : t("body.skills.gapLineUnknown")}
                 </span>
               </div>

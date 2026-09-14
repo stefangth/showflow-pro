@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { describe, it, expect } from "vitest";
 import { englishSources, scanBareNouns, capitalisedTokens } from "./vocabularyScan";
 
@@ -30,5 +31,20 @@ describe("vocabulary ratchet", () => {
 
   it("every capitalised {{Token}} is a vocabulary key", () => {
     expect(capitalisedTokens(sources)).toEqual([]);
+  });
+
+  it("no call site passes a vocabulary key as a runtime interpolation variable", () => {
+    // Grep-level guard: t('key', { show: ... }) would shadow the noun. Runtime variables
+    // are showTitle / castName / artistName / artistCount / productionCount.
+    let src = "";
+    try {
+      src = execSync(
+        "git grep -nE \"\\bt\\([^)]*\\{[^}]*\\b(show|shows|cast|casts|artist|artists|production|productions|skill|skills|showDate|showDates|understudy|understudies|hireOrder|hireOrders)\\s*:\" -- src ':!*.test.*'",
+        { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
+      ).trim();
+    } catch {
+      src = "";
+    }
+    expect(src, "rename the variable (showTitle / castName / artistName / artistCount / productionCount / skillNames / understudyCount)").toBe("");
   });
 });

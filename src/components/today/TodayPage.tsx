@@ -188,14 +188,14 @@ export default function TodayContainer() {
           // Nobody was actually asked (e.g. the whole cast turned out
           // ineligible/blocked by the time this ran) — never claim success
           // for an action that changed nothing.
-          toast.error(t("toast.castAskedError", { cast, title: item.title }));
+          toast.error(t("toast.castAskedError", { castName: cast, title: item.title }));
           refetch();
           return;
         }
-        toast.success(t("toast.castAskedSuccess", { cast, title: item.title }));
+        toast.success(t("toast.castAskedSuccess", { castName: cast, title: item.title }));
         refetch();
       })
-      .catch(() => toast.error(t("toast.castAskedError", { cast, title: item.title })));
+      .catch(() => toast.error(t("toast.castAskedError", { castName: cast, title: item.title })));
   }
 
   function handleOpenDate(item: AtRiskDate) {

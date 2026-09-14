@@ -150,7 +150,7 @@ export function ProductionsStep({ orgId, onDone }: { orgId: string | null; onDon
                 </div>
                 {slots ? (
                   <Metric size="body">
-                    {t("body.productions.parts", { main: slots.main_cast, understudies: slots.understudies })}
+                    {t("body.productions.parts", { main: slots.main_cast, understudyCount: slots.understudies })}
                   </Metric>
                 ) : (
                   <StatusPill tone="waiting">{t("body.productions.unconfigured")}</StatusPill>
