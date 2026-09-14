@@ -32,7 +32,7 @@ interface Props {
  *  read-only unless granted the `rename_org` capability; admins always may edit. */
 export function OrganizationTab({ readOnly = false }: Props) {
   const { t } = useTranslation("settings");
-  const { currentOrg, refreshOrgs } = useAuth();
+  const { currentOrg, refreshOrgs, hasRole } = useAuth();
   const languagePacksEnabled = useFeature("language_packages");
   const qc = useQueryClient();
   const form = useForm<Values>({ resolver: zodResolver(schema), values: { name: currentOrg?.name ?? "" } });
@@ -99,7 +99,7 @@ export function OrganizationTab({ readOnly = false }: Props) {
             id="org-kind"
             value={currentOrg.org_kind}
             onChange={(k) => kindMutation.mutate(k)}
-            disabled={readOnly || kindMutation.isPending}
+            disabled={!hasRole("admin") || kindMutation.isPending}
           />
           <p className="text-xs text-muted-foreground">{t("organization.kind.help")}</p>
         </div>

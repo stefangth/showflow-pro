@@ -15,11 +15,12 @@ vi.mock("@/features/auth/AuthContext", () => ({
   useAuth: () => ({
     currentOrg: { id: "org-1", name: "Acme", slug: "acme", status: "active", is_demo: false, org_kind: "production", org_kind_set_at: null },
     refreshOrgs,
+    hasRole: (r: string) => (r === "admin" ? h.isAdmin : false),
   }),
 }));
 
 // Controllable entitlement + org-language data for the workspace-language picker.
-const h = vi.hoisted(() => ({ langPacks: false, orgLang: "en" as string }));
+const h = vi.hoisted(() => ({ langPacks: false, orgLang: "en" as string, isAdmin: true }));
 vi.mock("@/hooks/useEntitlements", () => ({ useFeature: () => h.langPacks }));
 const setOrgLanguage = vi.fn((..._a: unknown[]) => Promise.resolve());
 vi.mock("@/data/settings", () => ({
@@ -30,7 +31,7 @@ vi.mock("@/data/settings", () => ({
 import { OrganizationTab } from "./OrganizationTab";
 
 describe("OrganizationTab", () => {
-  beforeEach(() => { vi.clearAllMocks(); h.langPacks = false; h.orgLang = "en"; });
+  beforeEach(() => { vi.clearAllMocks(); h.langPacks = false; h.orgLang = "en"; h.isAdmin = true; });
 
   it("prefills the name and shows slug read-only", () => {
     renderWithProviders(<OrganizationTab />);
@@ -107,9 +108,18 @@ describe("OrganizationTab", () => {
       await waitFor(() => expect(refreshOrgs).toHaveBeenCalled());
     });
 
-    it("disables the workspace type picker when readOnly", () => {
-      renderWithProviders(<OrganizationTab readOnly />);
+    it("disables the workspace type picker for a non-admin, even with rename_org (readOnly=false)", () => {
+      // set_org_kind is hard admin-gated, so the picker follows hasRole('admin'), not the
+      // rename_org capability that drives readOnly. A producer granted rename_org
+      // (readOnly=false) must still see this control disabled.
+      h.isAdmin = false;
+      renderWithProviders(<OrganizationTab readOnly={false} />);
       expect(screen.getByLabelText(/workspace type/i)).toBeDisabled();
+    });
+
+    it("keeps the workspace type picker enabled for an admin regardless of readOnly", () => {
+      renderWithProviders(<OrganizationTab readOnly />);
+      expect(screen.getByLabelText(/workspace type/i)).not.toBeDisabled();
     });
   });
 });
