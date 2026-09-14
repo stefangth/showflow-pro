@@ -10,7 +10,7 @@ const b = (over: Partial<CastBookingLike>): CastBookingLike => ({
   artist: over.artist ?? { name: "Ada Lovelace" },
 });
 
-const opts = () => ({ canConfirm: true, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(), canOpenSlot: true, slotActionLabel: "Open next tier", onOpenSlot: vi.fn() });
+const opts = () => ({ canConfirm: true, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(), canOpenSlot: true, slotActionLabel: "Open next tier", onOpenSlot: vi.fn(), mainCastTitle: "Main cast", understudyTitle: "Understudies" });
 
 describe("buildCastGroups", () => {
   it("splits main and understudy groups with confirmed 'N of M' counts", () => {
@@ -25,6 +25,20 @@ describe("buildCastGroups", () => {
     expect(groups.map((g) => g.title)).toEqual(["Main cast", "Understudies"]);
     expect(groups[0].count).toBe("1 of 4");
     expect(groups[1].count).toBe("1 of 2");
+  });
+
+  it("uses the caller-provided group titles (so they can be vocabulary-resolved)", () => {
+    // The cockpit passes t()-resolved titles; a staffing org resolves them to
+    // "Main team" / "Standbys". buildCastGroups must not hardcode the words.
+    const groups = buildCastGroups(
+      [
+        b({ id: "m1", status: "confirmed", is_understudy: false }),
+        b({ id: "u1", status: "confirmed", is_understudy: true }),
+      ],
+      { main_cast: 1, understudies: 1 },
+      { ...opts(), mainCastTitle: "Main team", understudyTitle: "Standbys" },
+    );
+    expect(groups.map((g) => g.title)).toEqual(["Main team", "Standbys"]);
   });
 
   it("pads a group with dashed open-slot rows up to capacity", () => {
@@ -75,7 +89,7 @@ describe("buildCastGroups", () => {
     const [main] = buildCastGroups(
       [b({ id: "a1", status: "soft_booked" }), b({ id: "c1", status: "confirmed" })],
       { main_cast: 2, understudies: 0 },
-      { canConfirm: true, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(), canOpenSlot: true, slotActionLabel: "Open next tier", onOpenSlot: vi.fn() },
+      opts(),
     );
     const accepted = main.rows.find((r) => r.status === "accepted");
     const confirmed = main.rows.find((r) => r.status === "confirmed");
@@ -87,7 +101,7 @@ describe("buildCastGroups", () => {
     const [main] = buildCastGroups(
       [b({ id: "a1", status: "soft_booked" })],
       { main_cast: 1, understudies: 0 },
-      { canConfirm: false, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(), canOpenSlot: true, slotActionLabel: "Open next tier", onOpenSlot: vi.fn() },
+      { ...opts(), canConfirm: false },
     );
     expect(main.rows.find((r) => r.status === "accepted")?.onConfirm).toBeUndefined();
   });
@@ -125,15 +139,13 @@ describe("buildCastGroups", () => {
     const slots = { main_cast: 2, understudies: 0 };
     // Direct-flow label, and canOpenSlot true even though canConfirm is false.
     const [directMain] = buildCastGroups([b({ id: "c", status: "confirmed" })], slots, {
-      canConfirm: false, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(),
-      canOpenSlot: true, slotActionLabel: "Book artist", onOpenSlot: vi.fn(),
+      ...opts(), canConfirm: false, slotActionLabel: "Book artist",
     });
     expect(directMain.rows.find((r) => r.open)?.slotActionLabel).toBe("Book artist");
 
     // canOpenSlot false hides the action even when canConfirm is true.
     const [gatedMain] = buildCastGroups([b({ id: "c", status: "confirmed" })], slots, {
-      canConfirm: true, onConfirm: vi.fn(), canCancel: true, onCancel: vi.fn(),
-      canOpenSlot: false, slotActionLabel: "Open next tier", onOpenSlot: vi.fn(),
+      ...opts(), canOpenSlot: false,
     });
     expect(gatedMain.rows.find((r) => r.open)?.slotActionLabel).toBeUndefined();
   });

@@ -63,10 +63,16 @@ export interface BuildCastGroupsOpts {
   slotActionLabel: string;
   /** Jump to the offers/book tab from an open slot. */
   onOpenSlot: () => void;
+  /** Group headings, resolved by the caller so they read in the org's workspace
+   *  vocabulary ("Main cast"/"Understudies" for production, "Main team"/"Standbys"
+   *  for staffing). Kept out of here so this pure module imports no i18n. */
+  mainCastTitle: string;
+  understudyTitle: string;
 }
 
 /**
- * Build the Main cast / Understudies groups for the cockpit Cast tab. Named rows
+ * Build the main / understudy groups for the cockpit Cast tab (headings come from
+ * `opts`, vocabulary-resolved by the caller). Named rows
  * (confirmed → accepted → offered) come first, then dashed open-slot rows up to
  * the configured capacity. When the date has no slot config, capacity is unknown
  * so only the named rows render (no open slots, no "N of M" count).
@@ -122,11 +128,11 @@ export function buildCastGroups(
     };
   };
 
-  const groups: CastGroup[] = [make(false, "Main cast", slots ? slots.main_cast : null)];
+  const groups: CastGroup[] = [make(false, opts.mainCastTitle, slots ? slots.main_cast : null)];
   // Show the understudies group whenever it has capacity OR an active understudy
   // booking exists — otherwise a booking left over after capacity was reduced to 0
   // would silently vanish from the tab while still counted in the header/footer.
   const wantUnderstudies = (slots ? slots.understudies > 0 : false) || active.some((b) => b.is_understudy);
-  if (wantUnderstudies) groups.push(make(true, "Understudies", slots ? slots.understudies : null));
+  if (wantUnderstudies) groups.push(make(true, opts.understudyTitle, slots ? slots.understudies : null));
   return groups;
 }
