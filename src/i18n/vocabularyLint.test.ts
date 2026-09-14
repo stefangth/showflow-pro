@@ -9,9 +9,11 @@ import { VOCABULARY } from "@/lib/orgKind";
  * (PR 2 tasks 7 to 13) drives BASELINE to 0, then Task 14 replaces it with ALLOW.
  * `VOCAB_REPORT=1 npx vitest run src/i18n/vocabularyLint.test.ts` prints every hit.
  */
-const BASELINE = 873; // measured count as of this commit; never raise it, PR 2 drives it to 0.
+const BASELINE = 969; // measured count as of this commit; never raise it, PR 2 drives it to 0.
 // Raised once, from 737, when "contract(s)" joined the NOUN regex: it is the production value of
 // {{hireOrder}}, so a literal "contract" in copy is a missed substitution a staffing org would read.
+// Raised again when "skill(s)" joined the regex, for the same reason: a staffing org reads
+// "qualification", so a literal "skill" in copy is a missed substitution.
 
 // Key-path prefixes exempt from the scan: copy that legitimately names both vocabularies
 // (the workspace-type picker explains what each option means).

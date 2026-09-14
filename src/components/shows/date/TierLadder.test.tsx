@@ -93,7 +93,7 @@ describe("TierLadder", () => {
 
   it("shows a later round's match line with its miss-skill detail", () => {
     renderLadder();
-    expect(screen.getByText("4 of 11 artists match · 7 miss a required skill")).toBeInTheDocument();
+    expect(screen.getByText("4 of 11 artists match · 7 miss one required skill")).toBeInTheDocument();
   });
 
   it("clicking Close fires onCloseTier with the open round's tier", () => {

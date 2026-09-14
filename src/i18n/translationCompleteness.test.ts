@@ -138,6 +138,8 @@ const IDENTICAL_OK: Record<string, string> = {
   'showsDetail.cockpitFooter.hireOrder': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
   'showsDetail.castDetails.eyebrow': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
   'showsDetail.castsSection.casts': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'showsDetail.showDateSheet.titleFallback': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
+  'showsDetail.cockpitRail.date': 'whole value is one vocabulary variable, so both languages carry the same token and the noun resolves per language at runtime',
 
   // chats
   'chats.list.title': 'loanword "Chats", identical in German',
