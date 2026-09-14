@@ -198,7 +198,9 @@
     "reviewSessionsLabel": "Durchgänge",
     "previewAvailable": "Dokumentvorschau verfügbar, sobald der {{HireOrder}} erstellt ist.",
     "saveAsDraft": "Als Entwurf speichern",
-    "issueAndSendToArtist": "Ausstellen und an {{Artist}} senden"
+    "issueAndSendToArtist": "$t(hireOrdersPages:wizard.issueAndSendToArtist_{{kind}})",
+    "issueAndSendToArtist_production": "Ausstellen und an Artist senden",
+    "issueAndSendToArtist_staffing": "Ausstellen und an das Teammitglied senden"
   },
   "factsRail": {
     "fee": "Honorar",
@@ -229,7 +231,9 @@
   },
   "timeline": {
     "created": "Erstellt",
-    "issued": "An {{Artist}} ausgestellt",
+    "issued": "$t(hireOrdersPages:timeline.issued_{{kind}})",
+    "issued_production": "An Artist ausgestellt",
+    "issued_staffing": "An das Teammitglied ausgestellt",
     "seen": "Gesehen",
     "awaiting": "Gegenzeichnung ausstehend",
     "countersigned": "Gegengezeichnet",
@@ -452,7 +456,9 @@
     "title": "{{HireOrder}}",
     "edit": "Bearbeiten",
     "notIssuedTitle": "Noch nicht ausgestellt",
-    "notIssuedBody": "Dieser {{HireOrder}} hat kein Dokument, bis er ausgestellt wird.",
+    "notIssuedBody": "$t(hireOrdersPages:detailPage.notIssuedBody_{{kind}})",
+    "notIssuedBody_production": "Dieser Engagementvertrag hat kein Dokument, bis er an den Artist ausgestellt wird.",
+    "notIssuedBody_staffing": "Dieser Arbeitsauftrag hat kein Dokument, bis er an das Teammitglied ausgestellt wird.",
     "previewErrorTitle": "Dokument konnte nicht geladen werden",
     "previewErrorBody": "Die Vorschau konnte nicht geladen werden. Nutze stattdessen oben die Schaltfläche Herunterladen.",
     "iframeTitle": "{{HireOrder}}-Dokument",

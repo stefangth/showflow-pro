@@ -37,7 +37,7 @@
     "agentName": "Agent name (optional)",
     "agentEmail": "Agent email (optional)",
     "agentSignature": "Agent signature (optional)",
-    "agentSignatureHelp": "A PNG of the booking agent's signature, drawn on the signature line of issued {{hireOrders}}. Save the letterhead to apply.",
+    "agentSignatureHelp": "A PNG of the booking agent's signature, drawn on the hiring party's signature line of issued {{hireOrders}}. Save the letterhead to apply.",
     "signaturePreviewAlt": "Agent signature preview",
     "signatureOnFile": "Signature on file",
     "remove": "Remove",

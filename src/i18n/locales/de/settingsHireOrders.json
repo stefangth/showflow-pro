@@ -37,7 +37,7 @@
     "agentName": "Name der Agentur (optional)",
     "agentEmail": "E-Mail der Agentur (optional)",
     "agentSignature": "Unterschrift der Agentur (optional)",
-    "agentSignatureHelp": "Ein PNG der Unterschrift der Booking-Agentur, das auf der Unterschriftszeile ausgestellter {{HireOrders}} erscheint. Speichere den Briefkopf, um es zu übernehmen.",
+    "agentSignatureHelp": "Ein PNG der Unterschrift der Booking-Agentur, das in der Unterschriftszeile der auftraggebenden Partei ausgestellter {{HireOrders}} erscheint. Speichere den Briefkopf, um es zu übernehmen.",
     "signaturePreviewAlt": "Vorschau der Agentur-Unterschrift",
     "signatureOnFile": "Unterschrift hinterlegt",
     "remove": "Entfernen",
