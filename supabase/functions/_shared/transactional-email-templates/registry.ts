@@ -15,6 +15,7 @@ import {
   type EmailTheme,
   type EmailThemeOverride,
 } from './_shell/emailTheme.ts'
+import { VOCABULARY, type OrgKind } from '../orgKind.ts'
 
 export type TemplateData = Record<string, unknown>
 
@@ -79,6 +80,11 @@ export interface TemplatePresentationOptions {
   /** Language the copy base resolves to. Defaults to English; delivery sets this
    *  from resolveOrgLocale (entitlement-gated) and preview from an explicit param. */
   locale?: EmailLocale
+  /** The org's workspace type, chosen from VOCABULARY to swap domain nouns in the
+   *  resolved copy. Defaults to production, whose words equal the hardcoded nouns, so
+   *  an omitted kind (or production) is byte-identical to before. Delivery resolves it
+   *  from the org via resolveOrgKind; preview may set it explicitly for admin QA. */
+  kind?: OrgKind
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -193,7 +199,11 @@ export function resolveTemplatePresentation(
   const template = TEMPLATES[templateName]
   if (!template) return null
 
-  const copy = resolveEmailCopy(options.copyOverride, options.locale)
+  const copy = resolveEmailCopy(
+    options.copyOverride,
+    options.locale,
+    VOCABULARY[options.kind ?? 'production'][options.locale ?? 'en'],
+  )
   const theme = resolveEmailTheme(options.themeOverride)
   const defaultSubject = typeof template.subject === 'function'
     ? template.subject(data)

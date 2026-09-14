@@ -1150,3 +1150,75 @@ Deno.test("send-transactional-email: explicit body.locale stays gated, German is
   assertEquals(sent.subject.includes("dates to answer"), true, sent.subject);
   assertEquals(sent.html.includes('lang="en"'), true);
 });
+
+// ===========================================================================
+// Per-org workspace type (org_kind): send resolves the org's kind and swaps the
+// domain nouns in the rendered copy. Production (or a null org) is byte-identical.
+// ===========================================================================
+Deno.test("send-transactional-email: staffing org renders staffing vocabulary in the copy", async () => {
+  const ORG = "00000000-0000-0000-0000-0000000000e1";
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  const { deps } = makeFakeDeps({
+    envVars: ENV,
+    tables: {
+      ...happyPathTables(),
+      // Serves both resolveOrgKind's org_kind read and the demo guardrail's is_demo read.
+      organizations: { data: { org_kind: "staffing", is_demo: false }, error: null },
+    },
+    fetchImpl,
+  });
+  const res = await handle(authedReq({
+    body: {
+      template_name: "org-invitation",
+      recipient_email: "invitee@example.com",
+      org_id: ORG,
+      templateData: { orgName: "Studio" },
+    },
+  }), deps);
+  assertEquals(res.status, 200);
+  const resend = fetchCalls.find((c) => new URL(c.url).hostname === "api.resend.com");
+  assertExists(resend);
+  const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { html: string };
+  // org-invitation.productIntro under staffing: "... plans its clients and books the people for them."
+  assertEquals(
+    sent.html.includes("plans its clients and books the people"),
+    true,
+    "Expected staffing nouns (clients/people) in the org-invitation productIntro",
+  );
+  assertEquals(
+    sent.html.includes("plans its productions and books the artists"),
+    false,
+    "Production nouns must not leak into a staffing org's email",
+  );
+});
+
+Deno.test("send-transactional-email: org with no org_kind (null org) falls back to production vocabulary", async () => {
+  const { fetchImpl, fetchCalls } = recordingFetch();
+  // No org_id in the body -> orgId null -> resolveOrgKind short-circuits to production.
+  const { deps } = makeFakeDeps({
+    envVars: ENV,
+    tables: happyPathTables(),
+    fetchImpl,
+  });
+  const res = await handle(authedReq({
+    body: {
+      template_name: "org-invitation",
+      recipient_email: "invitee@example.com",
+      templateData: { orgName: "Studio" },
+    },
+  }), deps);
+  assertEquals(res.status, 200);
+  const resend = fetchCalls.find((c) => new URL(c.url).hostname === "api.resend.com");
+  assertExists(resend);
+  const sent = JSON.parse(String((resend!.init as RequestInit).body)) as { html: string };
+  assertEquals(
+    sent.html.includes("plans its productions and books the artists"),
+    true,
+    "Expected production nouns (productions/artists) when the org has no workspace type",
+  );
+  assertEquals(
+    sent.html.includes("plans its clients and books the people"),
+    false,
+    "Staffing nouns must not appear for a production/null-org send",
+  );
+});

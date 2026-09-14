@@ -7,6 +7,7 @@ import { preflight, json } from "../_shared/http.ts";
 import { realDeps, type Deps, type EmailAttachment } from "../_shared/deps.ts";
 import { resolveOrgSetting, BOOKING_ENGINE_DEFAULTS } from "../_shared/settings.ts";
 import { coerceLocale, resolveOrgLocale, type ServerLocale } from "../_shared/orgLocale.ts";
+import { resolveOrgKind } from "../_shared/orgKind.ts";
 import { categoryForTemplate } from "../_shared/notificationCategories.ts";
 import { isServiceRole } from "../_shared/auth.ts";
 import { redactEmail } from "../_shared/identity.ts";
@@ -270,6 +271,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     // language_packages (resolveOrgLocale double-gates). Org-less sends (null
     // orgId: magic-link, account-email-changed) stay English.
     const locale = await resolveOrgLocale(admin, orgId, localeOverride)
+    // Per-org workspace type: swaps the domain nouns in the resolved copy (staffing
+    // reads "clients"/"people", production is byte-identical). Not entitlement-gated;
+    // an org-less send (null orgId) resolves to production.
+    const kind = await resolveOrgKind(admin, orgId)
     const presentation = resolveTemplatePresentation(templateName, templateData, {
       copyOverride,
       copyIsExplicit: copySetting !== null,
@@ -278,6 +283,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         : undefined,
       themeOverride: themeSetting,
       locale,
+      kind,
     })
     if (!presentation) throw new Error(`Template '${templateName}' not found during presentation resolution`)
 
