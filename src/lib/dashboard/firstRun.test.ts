@@ -134,7 +134,7 @@ it("composeArtist carries ARTIST_ONBOARDING metadata over booking_flow only", ()
   const r = composeArtist(artistStatus, ARTIST_ONBOARDING, ctx);
   expect(r.steps).toHaveLength(1);
   expect(r.steps.map((s) => s.key)).toEqual(["blockDates"]);
-  expect(r.steps.map((s) => s.title)).toEqual(["Block what you cannot play"]);
+  expect(r.steps.map((s) => s.title)).toEqual(["Block what you cannot take on"]);
   expect(r.steps.every((s) => s.moduleKey === "booking_flow")).toBe(true);
   expect(r.steps.map((s) => s.done)).toEqual([false]);
   expect(r.complete).toBe(false); // mirrors the status

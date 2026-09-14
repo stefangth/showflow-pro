@@ -6,7 +6,9 @@
       "todoHint_production": "Synchronisiere von Airtable, importiere eine Tabelle oder füge eine Produktion manuell hinzu.",
       "todoHint_staffing": "Synchronisiere von Airtable, importiere eine Tabelle oder füge einen Kunden manuell hinzu.",
       "doneHint": "Deine {{Productions}} sind eingetragen.",
-      "ctaLabel": "{{Production}} hinzufügen"
+      "ctaLabel": "$t(onboarding:steps.shows.ctaLabel_{{kind}})",
+      "ctaLabel_production": "Produktion hinzufügen",
+      "ctaLabel_staffing": "Kunden hinzufügen"
     },
     "flow": {
       "title": "Booking Flow",
@@ -16,8 +18,8 @@
     },
     "people": {
       "title": "Deine {{Artists}} hinzufügen",
-      "todoHint": "Niemand kann gebucht werden, solange deine Besetzungsliste keine aktiven {{Artists}} hat.",
-      "doneHint": "Deine Besetzungsliste enthält aktive {{Artists}}.",
+      "todoHint": "Niemand kann gebucht werden, solange deine Personenliste keine aktiven {{Artists}} hat.",
+      "doneHint": "Deine Personenliste enthält aktive {{Artists}}.",
       "ctaLabel": "{{Artists}} hinzufügen"
     },
     "slots": {
@@ -63,9 +65,7 @@
       "ctaLabel": "Team einladen"
     },
     "blockDates": {
-      "title": "$t(onboarding:steps.blockDates.title_{{kind}})",
-      "title_production": "Sperre, was du nicht spielen kannst",
-      "title_staffing": "Sperre, was du nicht übernehmen kannst",
+      "title": "Sperre, was du nicht übernehmen kannst",
       "todoHint": "$t(onboarding:steps.blockDates.todoHint_{{kind}})",
       "todoHint_production": "Von dir gesperrte Termine fallen aus der Liste, bevor dich jemand bucht, sodass du nur von Terminen hörst, die passen.",
       "todoHint_staffing": "Von dir gesperrte Schichten fallen aus der Liste, bevor dich jemand bucht, sodass du nur von Schichten hörst, die passen.",
@@ -237,11 +237,9 @@
       "completeProgressHint": "Die Regeln, die du übernommen hast",
       "incompleteHeadline": "{{org}} hat dich zur Besetzungsliste hinzugefügt",
       "incompleteBodyOffers": "$t(onboarding:welcome.artist.incompleteBodyOffers_{{kind}})",
-      "incompleteBodyOffers_production": "Anfragen kommen per E-Mail und landen auf dieser Seite. Sperre zuerst die Termine, die du nicht spielen kannst, damit du nur nach Terminen gefragt wirst, die passen.",
+      "incompleteBodyOffers_production": "Anfragen kommen per E-Mail und landen auf dieser Seite. Sperre zuerst die Termine, die du nicht übernehmen kannst, damit du nur nach Terminen gefragt wirst, die passen.",
       "incompleteBodyOffers_staffing": "Anfragen kommen per E-Mail und landen auf dieser Seite. Sperre zuerst die Schichten, die du nicht übernehmen kannst, damit du nur nach Schichten gefragt wirst, die passen.",
-      "incompleteBodyDirect": "$t(onboarding:welcome.artist.incompleteBodyDirect_{{kind}})",
-      "incompleteBodyDirect_production": "Dein Production Team bucht dich direkt, und bestätigte Termine landen auf dieser Seite. Sperre zuerst die Termine, die du nicht spielen kannst, damit sie aus der Liste fallen, bevor dich jemand bucht.",
-      "incompleteBodyDirect_staffing": "Dein Buchungsteam bucht dich direkt, und bestätigte Schichten landen auf dieser Seite. Sperre zuerst die Schichten, die du nicht übernehmen kannst, damit sie aus der Liste fallen, bevor dich jemand bucht.",
+      "incompleteBodyDirect": "Dein {{roleProducer}} bucht dich direkt, und bestätigte {{ShowDates}} landen auf dieser Seite. Sperre zuerst die {{ShowDates}}, die du nicht übernehmen kannst, damit sie aus der Liste fallen, bevor dich jemand bucht.",
       "incompletePrimary": "Einrichtung starten",
       "incompleteSecondary": "Später",
       "incompleteProgressLabel": "Eingerichtet · {{filled}} von {{total}}",
@@ -266,9 +264,7 @@
     "producerBodyReadOnly": "Das kann nur ein Admin erledigen. Das steht hier, damit du weißt, warum die Seite leer ist, nicht damit du es behebst.",
     "artistEyebrow": "Einrichtung",
     "artistTitle": "Vor deiner ersten Buchung",
-    "artistBody": "$t(onboarding:railHeaderCopy.artistBody_{{kind}})",
-    "artistBody_production": "Nichts davon blockiert irgendetwas. Es hält nur die Termine aus dem Weg, die du nicht spielen kannst.",
-    "artistBody_staffing": "Nichts davon blockiert irgendetwas. Es hält nur die Schichten aus dem Weg, die du nicht übernehmen kannst."
+    "artistBody": "Nichts davon blockiert irgendetwas. Es hält nur die {{ShowDates}} aus dem Weg, die du nicht übernehmen kannst."
   },
   "collapsed": {
     "completeLabel": "Eingerichtet · fertig",
@@ -298,8 +294,8 @@
       "what_production": "Welche Besetzungen zu einer Produktion in einer Stadt gehören.",
       "what_staffing": "Welche Teams zu einem Kunden in einer Stadt gehören.",
       "direct": "$t(onboarding:coverage.eligibility.direct_{{kind}})",
-      "direct_production": "Welche Besetzungen zu einer Produktion in einer Stadt gehören. Eine Produktion und Stadt ohne Treffer kann aus deiner gesamten aktiven Besetzungsliste gebucht werden, abzüglich aller, die an diesem Termin nicht frei sind oder einen erforderlichen Skill nicht haben.",
-      "direct_staffing": "Welche Teams zu einem Kunden in einer Stadt gehören. Ein Kunde und eine Stadt ohne Treffer können aus deiner gesamten aktiven Liste gebucht werden, abzüglich aller, die in dieser Schicht nicht frei sind oder eine erforderliche Qualifikation nicht haben.",
+      "direct_production": "Welche Besetzungen zu einer Produktion in einer Stadt gehören. Eine Produktion und Stadt ohne Treffer kann aus deiner gesamten aktiven Personenliste gebucht werden, abzüglich aller, die an diesem Termin nicht frei sind oder einen erforderlichen Skill nicht haben.",
+      "direct_staffing": "Welche Teams zu einem Kunden in einer Stadt gehören. Ein Kunde und eine Stadt ohne Treffer können aus deiner gesamten aktiven Personenliste gebucht werden, abzüglich aller, die in dieser Schicht nicht frei sind oder eine erforderliche Qualifikation nicht haben.",
       "offers": "$t(onboarding:coverage.eligibility.offers_{{kind}})",
       "offers_production": "Welche Besetzungen zu einer Produktion in einer Stadt gehören. Ohne Treffer wird niemand angefragt.",
       "offers_staffing": "Welche Teams zu einem Kunden in einer Stadt gehören. Ohne Treffer wird niemand angefragt."
@@ -388,7 +384,9 @@
       "datesChipSlots": "Aufteilung der Positionen festlegen",
       "datesActLine": "Nichts Nachgelagertes bedeutet etwas, solange keine {{Productions}} existieren.",
       "datesActPrimaryImport": "{{ShowDates}} importieren",
-      "datesActPrimaryAdd": "{{Production}} hinzufügen",
+      "datesActPrimaryAdd": "$t(onboarding:stageChain.org.datesActPrimaryAdd_{{kind}})",
+      "datesActPrimaryAdd_production": "Produktion hinzufügen",
+      "datesActPrimaryAdd_staffing": "Kunden hinzufügen",
       "datesOffLine": "{{ShowDates}} und Buchungen laufen für diese Organisation nicht in ShowFlow.",
       "offersReadyMetricLabel": "anfragebereit",
       "bookableMetricLabel": "buchbare {{ShowDates}}",
@@ -445,9 +443,7 @@
       "artistRosterBodyNoSteps": "Alles auf dieser Seite legt die Organisation fest. Hier gibt es nichts für dich zu tun.",
       "artistRosterHintHasSteps": "Etwa 2 Minuten",
       "artistRosterHintNoSteps": "Hier nichts zu tun",
-      "artistRosterProgressHintHasSteps": "$t(onboarding:stageChain.headline.artistRosterProgressHintHasSteps_{{kind}})",
-      "artistRosterProgressHintHasSteps_production": "Nichts davon blockiert irgendetwas. Es hält nicht spielbare Termine aus dem Weg.",
-      "artistRosterProgressHintHasSteps_staffing": "Nichts davon blockiert irgendetwas. Es hält nicht machbare Schichten aus dem Weg.",
+      "artistRosterProgressHintHasSteps": "Nichts davon blockiert irgendetwas. Es hält die {{ShowDates}}, die du nicht übernehmen kannst, aus dem Weg.",
       "artistRosterProgressHintNoSteps": "Auf deiner Seite gibt es nichts einzurichten.",
       "artistGhost": "Wie das Buchen hier funktioniert",
       "artistQueueTitle": "Deine {{ShowDates}}",

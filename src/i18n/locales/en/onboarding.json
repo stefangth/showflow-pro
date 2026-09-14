@@ -49,7 +49,7 @@
       "ctaLabel": "Invite team"
     },
     "blockDates": {
-      "title": "Block what you cannot play",
+      "title": "Block what you cannot take on",
       "todoHint": "{{ShowDates}} you block come off the list before anyone books you, so you only hear about {{showDates}} that work.",
       "doneHint": "Your calendar is up to date.",
       "ctaLabel": "Open availability"
@@ -202,8 +202,8 @@
       "completeProgressLabel": "Set up · {{total}} of {{total}}",
       "completeProgressHint": "The rules you inherited",
       "incompleteHeadline": "{{org}} added you to the roster",
-      "incompleteBodyOffers": "Asks arrive by email and land on this page. Block the {{showDates}} you cannot play first, so you only get asked about {{showDates}} that work.",
-      "incompleteBodyDirect": "Your {{roleProducer}} books you directly, and confirmed {{showDates}} land on this page. Block the {{showDates}} you cannot play first, so they come off the list before anyone books you.",
+      "incompleteBodyOffers": "Asks arrive by email and land on this page. Block the {{showDates}} you cannot take on first, so you only get asked about {{showDates}} that work.",
+      "incompleteBodyDirect": "Your {{roleProducer}} books you directly, and confirmed {{showDates}} land on this page. Block the {{showDates}} you cannot take on first, so they come off the list before anyone books you.",
       "incompletePrimary": "Start setup",
       "incompleteSecondary": "Later",
       "incompleteProgressLabel": "Set up · {{filled}} of {{total}}",
@@ -226,7 +226,7 @@
     "producerBodyReadOnly": "Only an admin can do these. This is here so you know why the page is empty, not so you can fix it.",
     "artistEyebrow": "Set up",
     "artistTitle": "Before your first booking",
-    "artistBody": "None of this blocks anything. It just keeps the {{showDates}} you cannot play out of the way."
+    "artistBody": "None of this blocks anything. It just keeps the {{showDates}} you cannot take on out of the way."
   },
   "collapsed": {
     "completeLabel": "Set up · done",
@@ -375,7 +375,7 @@
       "artistRosterBodyNoSteps": "Everything on this page is set by the org. There is nothing here for you to do.",
       "artistRosterHintHasSteps": "About 2 minutes",
       "artistRosterHintNoSteps": "Nothing to do here",
-      "artistRosterProgressHintHasSteps": "None of this blocks anything. It keeps unplayable {{showDates}} out of the way.",
+      "artistRosterProgressHintHasSteps": "None of this blocks anything. It keeps the {{showDates}} you cannot take on out of the way.",
       "artistRosterProgressHintNoSteps": "There is nothing to set up on your side.",
       "artistGhost": "How booking works here",
       "artistQueueTitle": "Your {{showDates}}",
