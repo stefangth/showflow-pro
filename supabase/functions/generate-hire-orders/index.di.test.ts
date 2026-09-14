@@ -5721,7 +5721,7 @@ Deno.test("issue: an org with no org_language renders the English copy base and 
   );
   assertEquals(res.status, 200);
   assertEquals(captured!.locale, "en");
-  assertEquals(captured!.copy?.header_eyebrow, "Performance hire order");
+  assertEquals(captured!.copy?.header_eyebrow, "Performance contract");
 });
 
 // Regression (Section C): a hire order issued in German countersigns in German —
