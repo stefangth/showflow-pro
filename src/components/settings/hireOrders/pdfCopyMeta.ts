@@ -37,8 +37,8 @@ export const COPY_SECTIONS: CopySection[] = [
     title: "Title",
     fields: [
       { key: "title_lead", label: "Lead line", tokens: [] },
-      { key: "billing_role_and_cast", label: "Billing (role and cast)", tokens: ["role", "cast"] },
-      { key: "billing_cast_only", label: "Billing (cast only)", tokens: ["cast"] },
+      { key: "billing_role_and_cast", label: "Billing (role and cast)", tokens: ["role", "castRef"] },
+      { key: "billing_cast_only", label: "Billing (cast only)", tokens: ["castRef"] },
     ],
   },
   {
@@ -47,7 +47,7 @@ export const COPY_SECTIONS: CopySection[] = [
       { key: "party_producer_label", label: "Producer label", tokens: [] },
       { key: "party_agent", label: "Booking agent line", tokens: ["agent_name"] },
       { key: "party_artist_label", label: "Artist label", tokens: [] },
-      { key: "party_cast_reference", label: "Cast reference line", tokens: ["cast"] },
+      { key: "party_cast_reference", label: "Cast reference line", tokens: ["castRef"] },
       { key: "party_engagement", label: "Engagement line", tokens: ["role"] },
     ],
   },
@@ -103,7 +103,7 @@ export const COPY_SECTIONS: CopySection[] = [
     fields: [
       { key: "signature_for_producer", label: "Producer signature line", tokens: ["legal_name"] },
       { key: "signature_producer_hint", label: "Producer signature hint", tokens: ["date"] },
-      { key: "signature_for_artist", label: "Artist signature line", tokens: ["artist"] },
+      { key: "signature_for_artist", label: "Artist signature line", tokens: ["artistName"] },
       { key: "signature_signed_electronically", label: "Signed-electronically hint", tokens: ["date"] },
       { key: "signature_artist_hint", label: "Artist signature hint", tokens: [] },
     ],
