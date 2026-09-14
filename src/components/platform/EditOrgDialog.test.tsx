@@ -18,6 +18,11 @@ const setOrgKindSpy = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/data/orgs", () => ({
   setOrgKind: (...args: unknown[]) => setOrgKindSpy(...args),
 }));
+const refreshOrgsSpy = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/features/auth/AuthContext", async (orig) => ({
+  ...(await orig<typeof import("@/features/auth/AuthContext")>()),
+  useAuth: () => ({ refreshOrgs: refreshOrgsSpy }),
+}));
 const fetchEntitlementsSpy = vi.fn().mockResolvedValue([
   { feature: "booking_flow", enabled: true },
   { feature: "hire_orders", enabled: false },
@@ -129,6 +134,7 @@ describe("EditOrgDialog user rights section", () => {
 describe("EditOrgDialog workspace type", () => {
   beforeEach(() => {
     setOrgKindSpy.mockClear();
+    refreshOrgsSpy.mockClear();
     (toast.success as ReturnType<typeof vi.fn>).mockClear();
   });
 
@@ -148,5 +154,15 @@ describe("EditOrgDialog workspace type", () => {
     await waitFor(() => expect(setOrgKindSpy).toHaveBeenCalledWith(expect.anything(), "o1", "staffing"));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Workspace type updated"));
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["platform"] });
+  });
+
+  it("refreshes the caller's own orgs after a workspace type change", async () => {
+    render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
+
+    fireEvent.click(screen.getByRole("combobox", { name: /workspace type/i }));
+    fireEvent.click(await screen.findByRole("option", { name: /staffing agency/i }));
+
+    await waitFor(() => expect(setOrgKindSpy).toHaveBeenCalled());
+    await waitFor(() => expect(refreshOrgsSpy).toHaveBeenCalled());
   });
 });

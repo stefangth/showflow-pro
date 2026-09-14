@@ -9,7 +9,8 @@ interface Props {
   disabled?: boolean;
 }
 
-/** The one Workspace type picker, reused by Settings, Get running and the Platform dialogs.
+/** The one Workspace type picker, reused by Settings > Organization and the Platform org dialogs.
+ *  Get running's WorkspaceStep does not use this component, it hand-rolls its own radio-card layout.
  *  Titles and descriptions come from the registry (ORG_KIND_LABELS), not from a locale file,
  *  so the edge mirror and the app can never disagree about what a kind is called. */
 export function OrgKindSelect({ id, value, onChange, disabled }: Props): JSX.Element {

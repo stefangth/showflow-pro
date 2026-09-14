@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/features/auth/AuthContext";
 import { updateOrg, exportOrgData, deleteOrg, setOrgEntitlement, type OrgStat } from "@/data/platform";
 import { setOrgKind } from "@/data/orgs";
 import { fetchEntitlements } from "@/data/entitlements";
@@ -30,6 +31,7 @@ type Values = z.infer<typeof schema>;
 
 export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const { refreshOrgs } = useAuth();
   const [busy, setBusy] = useState(false);
   const [confirmName, setConfirmName] = useState("");
   const [rightsOpen, setRightsOpen] = useState(false);
@@ -94,8 +96,9 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
 
   const kindMutation = useMutation({
     mutationFn: (kind: OrgKind) => setOrgKind(supabase, org!.org_id, kind),
-    onSuccess: () => {
+    onSuccess: async () => {
       qc.invalidateQueries({ queryKey: ["platform"] });
+      await refreshOrgs();
       toast.success("Workspace type updated");
     },
     onError: (e: Error) => toast.error(e.message),
