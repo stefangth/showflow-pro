@@ -196,7 +196,13 @@ describe('German catalog is translated (not English left in place)', () => {
       const en = leaves(resources.en[ns]);
       const de = leaves(resources.de[ns]);
       const suspicious = Object.keys(en).filter(
-        (k) => en[k] === de[k] && !(`${ns}.${k}` in IDENTICAL_OK),
+        // A `$t(...)` value is a per-kind routing reference, not prose: it carries no
+        // translatable text of its own (the words live in the _production/_staffing
+        // siblings, which keyParity requires and which are checked as their own leaves).
+        // When a label is kind-varying in BOTH languages (e.g. the standby abbreviation:
+        // en US/Standby, de ZB/Ersatz) the base redirect is identical across languages by
+        // design, so an en===de match on it is never a paste-through.
+        (k) => en[k] === de[k] && !en[k].startsWith('$t(') && !(`${ns}.${k}` in IDENTICAL_OK),
       );
       expect(
         suspicious,

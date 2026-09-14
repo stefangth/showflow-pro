@@ -111,7 +111,9 @@
         "cancelled_staffing": "Das Team wurde über diese Absage noch nicht informiert."
       },
       "expires": "Antworten bis {{time}}",
-      "understudyAbbrev": "ZB",
+      "understudyAbbrev": "$t(bookings:calendar.needsYou.understudyAbbrev_{{kind}})",
+      "understudyAbbrev_production": "ZB",
+      "understudyAbbrev_staffing": "Ersatz",
       "queueOverview": "Übersicht Warteschlange",
       "clearedToday": "Heute erledigt",
       "undoLast": "Letzte rückgängig"
