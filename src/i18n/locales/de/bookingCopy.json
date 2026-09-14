@@ -55,6 +55,28 @@
       "immediateNoConfirm_other": "Wenn eine Runde öffnet, gehen Anfragen sofort per E-Mail raus. {{Artists}} haben {{count}} Stunden Zeit zu antworten."
     }
   },
+  "slotsStep": {
+    "note": "Ein Termin ohne Besetzungsplan gilt nie als voll und kann daher nicht voll besetzt werden oder automatisch einen {{hireOrder}} erstellen.",
+    "emptyWithShows": "$t(bookingCopy:slotsStep.emptyWithShows_{{kind}})",
+    "emptyWithShows_production": "Jede aktive Produktion hat ihren Besetzungsplan bereits gesetzt.",
+    "emptyWithShows_staffing": "Jeder aktive Kunde hat seinen Besetzungsplan bereits gesetzt.",
+    "emptyNoShows": "$t(bookingCopy:slotsStep.emptyNoShows_{{kind}})",
+    "emptyNoShows_production": "Noch keine Produktionen. Lege zuerst eine Produktion an, dann setze hier ihren Besetzungsplan.",
+    "emptyNoShows_staffing": "Noch keine Kunden. Lege zuerst einen Kunden an, dann setze hier seinen Besetzungsplan.",
+    "addProduction": "{{Production}} anlegen",
+    "mainLabel": "Haupt",
+    "usLabel": "$t(bookingCopy:slotsStep.usLabel_{{kind}})",
+    "usLabel_production": "ZB",
+    "usLabel_staffing": "Ersatz",
+    "save": "Besetzungsplan speichern",
+    "toastSaved": "Besetzungsplan gespeichert",
+    "errors": {
+      "noOrg": "Keine aktive Organisation",
+      "enterMainCount": "$t(bookingCopy:slotsStep.errors.enterMainCount_{{kind}})",
+      "enterMainCount_production": "Gib eine Anzahl für die Hauptbesetzung ein",
+      "enterMainCount_staffing": "Gib eine Anzahl für das Hauptteam ein"
+    }
+  },
   "cockpit": {
     "upNext": {
       "direct": "Direktbuchung: Das {{roleProducer}} bucht aus wer angefragt werden kann",

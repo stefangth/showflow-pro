@@ -41,6 +41,22 @@
       "immediateNoConfirm_other": "When a round opens, asks email straight away. {{Artists}} get {{count}} hours to answer."
     }
   },
+  "slotsStep": {
+    "note": "A date with no casting breakdown never reads as full, so it can't reach fully filled or auto-draft a {{hireOrder}}.",
+    "emptyWithShows": "Every active {{production}} already has its casting breakdown set.",
+    "emptyNoShows": "No {{productions}} yet. Add a {{production}} first, then set its casting breakdown here.",
+    "addProduction": "Add a {{production}}",
+    "mainLabel": "main",
+    "usLabel": "$t(bookingCopy:slotsStep.usLabel_{{kind}})",
+    "usLabel_production": "u/s",
+    "usLabel_staffing": "standby",
+    "save": "Save casting breakdown",
+    "toastSaved": "Casting breakdown saved",
+    "errors": {
+      "noOrg": "No active organization",
+      "enterMainCount": "Enter a main {{cast}} count"
+    }
+  },
   "cockpit": {
     "upNext": {
       "direct": "Direct booking: {{roleProducer}} books from who can be asked",

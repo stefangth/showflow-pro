@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
@@ -19,6 +20,7 @@ type Draft = Record<string, { main: string; us: string }>;
  *  Understudy is optional here: a blank or zero u/s creates no understudy slot. */
 export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () => void }) {
   const qc = useQueryClient();
+  const { t } = useTranslation("bookingCopy");
   const shows = useQuery({
     queryKey: ["shows", "with-slots", orgId],
     enabled: !!orgId,
@@ -33,11 +35,11 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
 
   const save = useMutation({
     mutationFn: async () => {
-      if (!orgId) throw new Error("No active organization");
+      if (!orgId) throw new Error(t("slotsStep.errors.noOrg"));
       const edits = unset
         .map((s) => ({ id: s.id, main: draft[s.id]?.main, us: draft[s.id]?.us }))
         .filter((e) => e.main !== undefined && e.main !== "");
-      if (edits.length === 0) throw new Error("Enter a main cast count");
+      if (edits.length === 0) throw new Error(t("slotsStep.errors.enterMainCount"));
       await Promise.all(
         edits.map(async (e) => {
           // Seed from the show's EXISTING slots, never an empty array. saveShowSlots
@@ -74,7 +76,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
       qc.invalidateQueries({ queryKey: ["show-slots"] });
       qc.invalidateQueries({ queryKey: ["shows"] });
       qc.invalidateQueries({ queryKey: ["show-dates"] });
-      toast.success("Casting breakdown saved");
+      toast.success(t("slotsStep.toastSaved"));
       onDone();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -87,16 +89,16 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
     return (
       <div className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          A date with no casting breakdown never reads as full, so it can't reach fully filled or auto-draft a hire order.
+          {t("slotsStep.note")}
         </p>
         <div className="flex items-center gap-2.5 rounded-control border border-dashed border-border p-3">
           <span className="min-w-0 flex-1 text-sm text-muted-foreground">
             {hasActiveShows
-              ? "Every active production already has its casting breakdown set."
-              : "No productions yet. Add a production first, then set its casting breakdown here."}
+              ? t("slotsStep.emptyWithShows")
+              : t("slotsStep.emptyNoShows")}
           </span>
           <Button asChild size="sm" variant="outline">
-            <Link to={ROUTES.PRODUCTIONS}>Add a production</Link>
+            <Link to={ROUTES.PRODUCTIONS}>{t("slotsStep.addProduction")}</Link>
           </Button>
         </div>
       </div>
@@ -115,16 +117,16 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
               {s.program}
               {s.sub_program ? <span className="text-muted-foreground"> · {s.sub_program}</span> : null}
             </span>
-            <label className="text-eyebrow text-muted-foreground">main</label>
+            <label className="text-eyebrow text-muted-foreground">{t("slotsStep.mainLabel")}</label>
             <Input type="number" min={0} className="h-7 w-14" value={val(s.id, "main")}
               onChange={(e) => setVal(s.id, "main", e.target.value)} />
-            <label className="text-eyebrow text-muted-foreground">u/s</label>
+            <label className="text-eyebrow text-muted-foreground">{t("slotsStep.usLabel")}</label>
             <Input type="number" min={0} className="h-7 w-14" value={val(s.id, "us")}
               onChange={(e) => setVal(s.id, "us", e.target.value)} />
           </div>
         ))}
       </div>
-      <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>Save casting breakdown</Button>
+      <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>{t("slotsStep.save")}</Button>
     </div>
   );
 }

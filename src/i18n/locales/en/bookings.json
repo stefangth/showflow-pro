@@ -101,7 +101,9 @@
         "cancelled": "The {{cast}} has not been notified about this cancellation yet."
       },
       "expires": "Answer by {{time}}",
-      "understudyAbbrev": "US",
+      "understudyAbbrev": "$t(bookings:calendar.needsYou.understudyAbbrev_{{kind}})",
+      "understudyAbbrev_production": "US",
+      "understudyAbbrev_staffing": "Standby",
       "queueOverview": "Queue overview",
       "clearedToday": "Cleared today",
       "undoLast": "Undo last"
