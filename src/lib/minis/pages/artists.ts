@@ -4,22 +4,22 @@ import type { MiniDef, MiniSteps } from '../types';
 const STEP1 = {
   label: { en: 'A talent record', de: 'Ein Talentprofil' },
   text: {
-    en: 'An artist exists in your catalog whether or not they ever log in. External artists are normal.',
-    de: 'Ein Artist existiert in deinem Katalog, ob er sich jemals anmeldet oder nicht. Externe Artists sind normal.',
+    en: '{{Artists}} exist in your catalog whether or not they ever log in. External {{artists}} are normal.',
+    de: '{{Artists}} existieren in deinem Katalog, ob sie sich jemals anmelden oder nicht. Externe {{artists}} sind normal.',
   },
 };
 const STEP2 = {
-  label: { en: 'Skills', de: 'Skills' },
+  label: { en: '{{Skills}}', de: '{{Skills}}' },
   text: {
-    en: 'Skills gate offers. An artist must hold every skill a show and its date require, not just one.',
-    de: 'Skills steuern Angebote. Ein Artist muss jeden Skill haben, den eine Show und ihr Termin verlangen, nicht nur einen.',
+    en: '{{Skills}} gate offers. {{Artists}} must hold every {{skill}} the {{show}} and its {{showDate}} require, not just one.',
+    de: '{{Skills}} steuern Angebote. {{Artists}} müssen alle geforderten {{skills}} haben, nicht nur einzelne.',
   },
 };
 const STEP3 = {
-  label: { en: 'Casts', de: 'Besetzungen' },
+  label: { en: '{{Casts}}', de: '{{Casts}}' },
   text: {
-    en: 'Casts are how eligibility and the offer ladder are expressed. Priority is set per city.',
-    de: 'Über Besetzungen werden Eignung und Angebotsreihenfolge ausgedrückt. Die Priorität wird je Stadt gesetzt.',
+    en: '{{Casts}} are how eligibility and the offer ladder are expressed. Priority is set per city.',
+    de: 'Über {{casts}} werden Eignung und Angebotsreihenfolge ausgedrückt. Die Priorität wird je Stadt gesetzt.',
   },
 };
 
@@ -30,8 +30,8 @@ const admin: MiniSteps = [
   {
     label: { en: 'Invite and link', de: 'Einladen und verknüpfen' },
     text: {
-      en: 'Invite an artist and their login links to this record on accept, offers then go to their login email.',
-      de: 'Lädst du einen Artist ein, verknüpft sich sein Login beim Annehmen mit diesem Profil, Angebote gehen dann an seine Login-Adresse.',
+      en: 'Invite one {{artist}} and their login links to this record on accept, offers then go to their login email.',
+      de: 'Lädst du {{artists}} ein, verknüpft sich ihr Login beim Annehmen mit diesem Profil, Angebote gehen dann an ihre Login-Adresse.',
     },
   },
 ];
@@ -43,8 +43,8 @@ const producer: MiniSteps = [
   {
     label: { en: 'Accounts', de: 'Konten' },
     text: {
-      en: 'You can see whether an artist has an account. Inviting one is an admin action.',
-      de: 'Du siehst, ob ein Artist ein Konto hat. Das Einladen ist eine Admin-Aktion.',
+      en: 'You can see whether each {{artist}} has an account. Inviting one is an admin action.',
+      de: 'Du siehst, ob ein {{artist}} ein Konto hat. Das Einladen ist eine Admin-Aktion.',
     },
   },
 ];
@@ -52,6 +52,6 @@ const producer: MiniSteps = [
 export const artistsMini: MiniDef = {
   page: 'artists',
   route: ROUTES.ARTISTS,
-  eyebrow: { en: 'How the roster works', de: 'Wie das Ensemble verwaltet wird' },
+  eyebrow: { en: 'How the roster works', de: 'Wie die {{Artists}} verwaltet werden' },
   variants: { admin, producer, super: admin },
 };

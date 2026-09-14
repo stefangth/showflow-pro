@@ -4,8 +4,8 @@ import type { MiniDef, MiniSteps } from '../types';
 // Shared step labels (admin, producer and super use the same four labels here).
 const LABELS = {
   bookingEngine: { en: 'Booking engine', de: 'Buchungs-Engine' },
-  castsCities: { en: 'Casts and cities', de: 'Besetzungen und Städte' },
-  hireOrders: { en: 'Hire orders', de: 'Engagementverträge' },
+  castsCities: { en: '{{Casts}} and cities', de: '{{Casts}} und Städte' },
+  hireOrders: { en: '{{HireOrders}}', de: '{{HireOrders}}' },
   auditTrail: { en: 'Audit trail', de: 'Änderungsprotokoll' },
 } as const;
 
@@ -13,8 +13,8 @@ const admin: MiniSteps = [
   {
     label: LABELS.bookingEngine,
     text: {
-      en: 'These hours decide when artists hear about an offer and how long they have to answer it.',
-      de: 'Diese Uhrzeiten legen fest, wann Artists von einem Angebot erfahren und wie lange sie zum Antworten haben.',
+      en: 'These hours decide when {{artists}} hear about an offer and how long they have to answer it.',
+      de: 'Diese Uhrzeiten legen fest, wann {{artists}} von einem Angebot erfahren und wie lange sie zum Antworten haben.',
     },
   },
   {
@@ -27,8 +27,8 @@ const admin: MiniSteps = [
   {
     label: LABELS.hireOrders,
     text: {
-      en: 'Letterhead, terms and countersign mode are yours. Orders cannot be issued on empty terms.',
-      de: 'Briefkopf, Konditionen und Gegenzeichnungsmodus liegen bei dir. Ohne Konditionen lässt sich kein Engagementvertrag ausstellen.',
+      en: 'Letterhead, terms and countersign mode are yours. {{HireOrders}} cannot be issued on empty terms.',
+      de: 'Briefkopf, Konditionen und Gegenzeichnungsmodus liegen bei dir. Ohne Konditionen lässt sich kein {{hireOrder}} ausstellen.',
     },
   },
   {
@@ -44,8 +44,8 @@ const producer: MiniSteps = [
   {
     label: LABELS.bookingEngine,
     text: {
-      en: 'These hours decide when your artists hear about an offer and how long they have to answer.',
-      de: 'Diese Uhrzeiten legen fest, wann deine Artists von einem Angebot erfahren und wie lange sie zum Antworten haben.',
+      en: 'These hours decide when your {{artists}} hear about an offer and how long they have to answer.',
+      de: 'Diese Uhrzeiten legen fest, wann deine {{artists}} von einem Angebot erfahren und wie lange sie zum Antworten haben.',
     },
   },
   {
@@ -58,8 +58,8 @@ const producer: MiniSteps = [
   {
     label: LABELS.hireOrders,
     text: {
-      en: 'Until an admin sets the terms, no order can be issued. The blocker is listed so you know why.',
-      de: 'Solange ein Admin die Konditionen nicht gesetzt hat, lässt sich kein Engagementvertrag ausstellen. Der Grund steht dabei.',
+      en: 'Until an admin sets the terms, no {{hireOrder}} can be issued. The blocker is listed so you know why.',
+      de: 'Solange ein Admin die Konditionen nicht gesetzt hat, lässt sich kein {{hireOrder}} ausstellen. Der Grund steht dabei.',
     },
   },
   {

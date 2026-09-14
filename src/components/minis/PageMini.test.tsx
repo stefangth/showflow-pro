@@ -6,7 +6,7 @@ import { settingsMini } from '@/lib/minis/pages/settings';
 import { settingsArt } from './illustrations/SettingsMini';
 import { MINIS, PAGE_KEYS, type MiniDef, type MiniRole } from '@/lib/minis';
 import { ART } from './illustrations';
-import { VOCABULARY } from '@/lib/orgKind';
+import { VOCABULARY, interpolateVocabulary } from '@/lib/orgKind';
 
 const base = {
   def: settingsMini,
@@ -22,7 +22,7 @@ describe('PageMiniView', () => {
     expect(screen.getByText('What settings decide')).toBeInTheDocument();
     expect(screen.getByText('Booking engine')).toBeInTheDocument();
     expect(screen.getByText('Casts and cities')).toBeInTheDocument();
-    expect(screen.getByText('Hire orders')).toBeInTheDocument();
+    expect(screen.getByText('Contracts')).toBeInTheDocument();
     expect(screen.getByText('Audit trail')).toBeInTheDocument();
   });
 
@@ -75,9 +75,9 @@ describe('PageMiniView', () => {
     for (const role of Object.keys(def.variants) as MiniRole[]) {
       for (const lang of ['en', 'de'] as const) {
         const { unmount } = renderWithProviders(
-          <PageMiniView def={def} role={role} lang={lang} art={ART[page]} dismissed={false} onHide={() => {}} onResume={() => {}} vocab={VOCABULARY.production.en} />,
+          <PageMiniView def={def} role={role} lang={lang} art={ART[page]} dismissed={false} onHide={() => {}} onResume={() => {}} vocab={VOCABULARY.production[lang]} />,
         );
-        expect(screen.getByText(def.eyebrow[lang])).toBeInTheDocument();
+        expect(screen.getByText(interpolateVocabulary(def.eyebrow[lang], VOCABULARY.production[lang]))).toBeInTheDocument();
         unmount();
       }
     }
