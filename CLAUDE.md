@@ -156,23 +156,48 @@ src/
     artists/       # ArtistProfileSheet
     availability/  # ArtistAvailabilityCalendar, AvailabilityPicker, OfferResponseButtons
     bookings/      # ArtistBookingsView and booking surfaces
-                   #   + setup/ (BookingSetupRail, BookingProducerWaitingCard, EligibilityStep,
-                   #   FirstOfferCard, FlowStep, LadderStep, RehearsalBlock, SlotsStep, TimingStep
-                   #   — the guided booking-flow setup checklist shown on Shows & Bookings until
-                   #   the first offer can go out; note CoverageSteps.test.tsx in this directory
-                   #   is a misnamed leftover that actually tests EligibilityStep — there is no
-                   #   CoverageSteps component)
+                   #   + setup/ (FirstOfferCard — one-time dismissible explainer shown to an
+                   #   artist while they have a pending offer; FlowStep, TimingStep, RehearsalBlock,
+                   #   SlotsStep — step bodies reused inside the Get Running v3 wizard, not a
+                   #   standalone rail. The old BookingSetupRail/BookingProducerWaitingCard/
+                   #   EligibilityStep/LadderStep producer-facing rail was retired when Get Running
+                   #   v3 became the single onboarding surface — see `getRunning/` below)
     brand/         # StageMark — brand mark SVG (variants: mono outline "mark", violet tile "tile")
     calendar/      # EntityCalendar (shared month grid)
     casts/         # Cast grouping UI (dialog, sheet, section)
     chat/          # ChatPanel, MessageBubble (per-show-date threads)
     common/        # IconTooltip — shared tooltip-wrapped-icon-button helper
     consent/       # CookieConsentBanner (bottom-fixed GDPR banner), CookieConsentDialog (per-category toggles)
-    dashboard/     # Role-specific dashboards (ArtistDashboard, …)
-                   #   + firstRun/ (DashboardWelcome, DashboardWelcomeCollapsed, DashboardSetupRail,
-                   #   SamplePreview, useDashboardFirstRun, useArtistOnboardingStatus — the "dashboard
-                   #   first run" onboarding + sample-data preview shown until a workspace has real
-                   #   bookings, gated per role/module)
+    dashboard/     # ArtistDashboard only — rendered by DashboardPage (ROUTES.DASHBOARD, /today)
+                   #   for artist-only users. The old `firstRun/` onboarding rail (DashboardWelcome,
+                   #   DashboardSetupRail, SamplePreview, …) was retired with the Get Running v3
+                   #   cutover; admins/producers now get the Autopilot Today board instead (see
+                   #   `today/` below)
+    today/         # Autopilot Today — the steady-state ROUTES.DASHBOARD (/today) home for
+                   #   admins/producers (TodayPage.tsx exports `TodayContainer`): TodayHeader, DateRail,
+                   #   AtRiskDateCard, CancelledUntoldCard, BouncedAsksBanner, DoneForYouFeed,
+                   #   TodayEmpty + pure helpers feedRowText.ts/joinNames.ts. Data via
+                   #   useAutopilotToday (src/data/autopilot.ts). Never redirects; the one-time
+                   #   "is this org still mid-setup, send them to Get Running instead" decision
+                   #   lives at the app root in `features/auth/HomeLanding.tsx`, not here
+    getRunning/    # The Get Running v3 onboarding board (route `/get-running`, admin/producer
+                   #   only) — the single unified setup wizard that replaced the old per-module
+                   #   dashboard/bookings/hire-orders setup rails. HowThisOrgWorks.tsx (read-only
+                   #   reference card, now surfaced from Settings); panels/ (PeoplePanelBody,
+                   #   LadderPanelBody, EligibilityPanelBody, TeamPanelBody, CastRosterList,
+                   #   UnlocksNote, + panels/airtable/ AirtableConnect*); v3/ (GetRunningBoardV3 —
+                   #   the board shell, WizardShell, stepRegistryV3, FinishSetupLink,
+                   #   GetRunningSettingsMirror, StepComingSoon, WizardFooterContext/
+                   #   WizardFooterAction; board/ — HeroCard, StillShutCard, PhaseIconRail,
+                   #   PhaseRow; steps/ — SourceStep, ConnectStep, MapStep, CitiesStep,
+                   #   ProductionsStep, SkillsStep, FeeStep, DocumentStep, ArtistSkillAssignList,
+                   #   DatesMissingCityList, PartsEditorSheet — plus reused step bodies from
+                   #   `bookings/setup/` and `hireOrders/setup/`). Copy/step model lives in
+                   #   `src/lib/getRunning/` (steps.ts is the current v3 16-step composer;
+                   #   tasks.ts is an older v1 11-task composer still used by `HomeLanding` and
+                   #   `AcceptInvitePage` for the "is setup done" redirect check — the two models
+                   #   can disagree since v3 merged v1's `ladder`+`eligibility` into one `coverage`
+                   #   step; worth reconciling)
     demo/          # Sales Demo Mode UI (visible only inside an `is_demo` org): DemoBar
                    #   (top bar: scene selector, sim clock, reset/wipe, outbox, sandbox-link
                    #   dialog), DemoBadge (sidebar "DEMO" pill), DemoOutbox (captured-send
@@ -181,6 +206,9 @@ src/
                    #   useSandboxLinks in src/hooks/useDemo.ts) and copies the public
                    #   `/sandbox/:token` URL (SandboxViewerPage) for a leave-behind demo tour
     filters/       # Reusable filter/sort/view-toggle controls
+    help/          # HelpPage (`/help`) support: HelpRoleTabs, HelpFilters, HelpStageSection,
+                   #   HelpItemRow, HelpGlossary, HelpFooterCards — renders the typed bilingual
+                   #   FAQ data module at `src/lib/help/items.ts` (see the Help center checklist item)
     platform/      # Super-admin platform console UI (OrganizationsTab, PlatformAdminsTab,
                    #   PlatformDefaultsTab, EditOrgDialog, NewOrgDialog, OrgInvitePopover,
                    #   OrgMembersPopover, SystemHealthTab, UsersTab + UserDetailSheet — a cross-org
@@ -204,8 +232,9 @@ src/
                    #   used by the HireOrderDetailPage viewer; edit/ (FieldSection, ProvenanceChip,
                    #   SetupCallout — support for HireOrderEditPage); import/ (HireOrderImportDialog +
                    #   MapStep/RangeStep/ResolveStep/ReviewStep — bulk hire-order import wizard);
-                   #   setup/ (SetupRail, CountersignStep, LetterheadStep, TermsStep,
-                   #   ProducerWaitingCard — the guided hire-orders setup checklist)
+                   #   setup/ (CountersignStep, LetterheadStep, TermsStep — step bodies reused
+                   #   inside the Get Running v3 wizard; the old SetupRail/ProducerWaitingCard
+                   #   standalone checklist was retired with that cutover, see `getRunning/` above)
     settings/      # AirtableSyncTab (schema-driven mapping + catalog linking), OrganizationTab,
                    #   CastsCitiesTab, ProductionOwnershipTab, DocumentationTab (+ MarkdownDoc,
                    #   SystemMapCanvas, SystemMapReference — Settings → Documentation → System Map),
@@ -236,9 +265,11 @@ src/
                    #   + trust/ (TrustDataTab, OrgDataCard, VisibilityMatrix, RetentionCard,
                    #   YourDataCard, DocumentsCard — Settings → Trust & data, the in-app half of
                    #   the Trust Center; renders src/lib/trust/facts.ts scoped to the active org)
-    setup/         # Shared module-onboarding-rail chrome used by dashboard/bookings/hire-orders setup
-                   #   checklists: SetupChecklistSheet, SetupStepRow, setupRailMode.ts (banner →
-                   #   collapsed bar → button → hidden), useModuleOnboardingRail, useRailDismissed
+    setup/         # useRailDismissed only — per-person dismissal used by
+                   #   `useGetRunningNavVisible` and `FirstOfferCard`. The rest of the old shared
+                   #   module-onboarding-rail chrome (SetupChecklistSheet, SetupStepRow,
+                   #   setupRailMode.ts, useModuleOnboardingRail) was retired with the Get Running
+                   #   v3 cutover — see `getRunning/` above
     layout/        # AppLayout (sidebar + topbar shell), NotificationsList (notification bell popover)
     minis/         # Page minis: PageMini (frame: pure PageMiniView + thin container),
                    #   atoms.tsx (token-only miniature atoms) and illustrations/<Page>Mini.tsx
@@ -264,7 +295,15 @@ src/
                    #   platform, platformUsers (cross-org user directory + membership/artist-link/
                    #   manage-user actions backing Platform → Users), profiles, remoteSheet, settings,
                    #   settingsAudit (settings change-audit log), shows, showDates, showAssignments
-                   #   (production ownership, explicitly active-org-scoped), skills, systemMap.
+                   #   (production ownership, explicitly active-org-scoped), skills, systemMap,
+                   #   autopilot (Autopilot Today board reads), tierLadder (client mirror of the
+                   #   server tier-ladder resolver, cast-per-tier for the Offers cockpit),
+                   #   trustStats (Settings → Trust & data org counts), orgAdmins (admin display
+                   #   names via `list_org_admin_names`), castProductionFees (per cast×production
+                   #   fee overrides), datesSource (org's chosen Get Running dates-wizard source:
+                   #   airtable/sheet/manual), sheetImport (saved published-CSV URL + column map
+                   #   for the sheet dates source), slots (named `show_slots` rows backing the
+                   #   slot-row repeater on ShowFormDialog).
                    #   Test with supabaseFake.ts (never vi.mock the client).
   features/
     auth/          # AuthContext (org-aware: currentOrg/orgs/switchOrg, isSuperAdmin),
@@ -298,11 +337,23 @@ src/
                    #   useSystemHealth (useCronHealth, useEdgeFnLogs/Metrics, useEmailHealth,
                    #   useHealthDaily), useShows/useShowDates/useCities/useAllCities,
                    #   useBookingFlow (effective org booking-flow policy), useBookingSetup
-                   #   (booking-setup-rail readiness), useHireOrders (draft/issue/preview/
+                   #   (booking-flow Get Running step readiness), useHireOrders (draft/issue/preview/
                    #   download-url actions, terms, useDatesReadyForHireOrder), useHireOrderSetup
-                   #   (hire-orders-setup-rail readiness), useOrderBlockers (issuing blockers),
+                   #   (hire-orders Get Running step readiness), useOrderBlockers (issuing blockers),
                    #   useMyBlockedDatesCount, usePlatformUsers (Platform → Users query/mutations),
-                   #   useSettingsAudit)
+                   #   useSettingsAudit,
+                   #   useAutopilotToday (Autopilot Today board data), useNeedsYouCount (org-wide
+                   #   "Needs you" sidebar badge count), useTierLadder (tier→cast map + per-tier
+                   #   headcounts), useDerivedDraft (edit-tracking draft-as-view-of-server-value
+                   #   pattern), useCastProductionFees, useBookingFlowProvenance ("rules set by
+                   #   admin/producer X" line), useOrgAdminNames, usePasswordStatus (whether the
+                   #   user has a password set), useTrustStats/useOrgDataStats (Trust & data tiles),
+                   #   useAirtableConsole (Settings Airtable console queries), useAirtableDatesReady
+                   #   (lightweight Airtable-ready check for Shows & Bookings), useShowSlots
+                   #   (ShowFormDialog slot repeater), useGetRunning/useGetRunningV3/
+                   #   useGetRunningNavVisible (see `getRunning/` in the components tree above —
+                   #   note useGetRunning's v1 task model and useGetRunningV3's v3 step model can
+                   #   disagree on whether setup is "done")
                    #   + UI hooks (use-mobile, use-toast)
   integrations/
     supabase/
@@ -320,7 +371,15 @@ src/
                    #   index.ts MINIS registry, resolveMiniRole; illustrations live in
                    #   src/components/minis. See the New page checklist)
   pages/           # One file per route, default-exported
-                   #   Key pages: DashboardPage, ShowsBookingsPage (ROUTES.BOOKINGS),
+                   #   Key pages: DashboardPage (ROUTES.DASHBOARD, /today) — always renders,
+                   #     never redirects: ArtistDashboard for artist-only users, Autopilot Today
+                   #     (`components/today/TodayContainer`) for everyone else. `ROUTES.HOME`
+                   #     ('/') renders HomeLanding instead — a one-time post-login redirect
+                   #     decision (Get Running vs. Dashboard), not a page of its own,
+                   #   GetRunningPage (ROUTES.GET_RUNNING, /get-running) — thin admin/producer-gated
+                   #     wrapper around GetRunningBoardV3, the unified setup wizard,
+                   #   HelpPage (ROUTES.HELP, /help) — role-aware Help center over `src/lib/help/items.ts`,
+                   #   ShowsBookingsPage (ROUTES.BOOKINGS),
                    #   ProductionsPage (ROUTES.PRODUCTIONS) — admin+producer catalog CRUD + drag-reorder,
                    #   ArtistsPage (admin+producer), AvailabilityPage (artist),
                    #   AdminPage, SettingsPage, ChatsListPage
@@ -328,7 +387,8 @@ src/
                    #   ResetPasswordPage (ROUTES.RESET_PASSWORD) — request + set (public, no auth)
                    #   PlatformPage (ROUTES.PLATFORM) — super-admin console; uses PlatformRoute
                    #   HireOrdersPage (ROUTES.HIRE_ORDERS, /hire-orders) — list page (KPIs, table,
-                   #     slide-over, new-order wizard, import dialog) with its own setup rail; feature-gated
+                   #     slide-over, new-order wizard, import dialog), links out to Get Running via
+                   #     FinishSetupLink when setup isn't done; feature-gated
                    #   HireOrderDetailPage (ROUTES.HIRE_ORDER_DETAIL, /hire-orders/:id): the
                    #     single hire-order viewer (admin/producer/artist; feature-gated route)
                    #   HireOrderEditPage (ROUTES.HIRE_ORDER_EDIT, /hire-orders/:id/edit) — edit a
@@ -413,7 +473,7 @@ When adding a new page:
 2. Create `src/pages/YourPage.tsx` with a default export.
 3. Register in `src/App.tsx` with `<ProtectedRoute requiredRoles={[...]}>`.
 4. Add a nav item in `src/components/layout/` with matching role gating (give it a `labelKey` so the label is translatable).
-5. **Page mini (convention).** Every route explains its own module in a four-step, role-aware mini pinned below the setup rail. Add a `PageKey` + a `MiniDef` at `src/lib/minis/pages/<page>.ts` (bilingual EN + DE, informal "Du", reuse `src/i18n/terms.ts` `TERMS`), register it in `src/lib/minis/index.ts`, build its token-only illustration at `src/components/minis/illustrations/<Page>Mini.tsx` (add it to the `ART` barrel), and drop `<PageMini page="<page>" />` into the page at the header→body seam. Copy is guarded by `minis.test.ts` (structure + en≠de) and `copyLint.test.ts` (no dashes, Du). If a page has no mini, state "No mini." with a reason in the PR. See `docs/superpowers/specs/2026-08-14-page-minis-design.md`.
+5. **Page mini (convention).** Every route explains its own module in a four-step, role-aware mini pinned at the header→body seam. Add a `PageKey` + a `MiniDef` at `src/lib/minis/pages/<page>.ts` (bilingual EN + DE, informal "Du", reuse `src/i18n/terms.ts` `TERMS`), register it in `src/lib/minis/index.ts`, build its token-only illustration at `src/components/minis/illustrations/<Page>Mini.tsx` (add it to the `ART` barrel), and drop `<PageMini page="<page>" />` into the page at the header→body seam. Copy is guarded by `minis.test.ts` (structure + en≠de) and `copyLint.test.ts` (no dashes, Du). If a page has no mini, state "No mini." with a reason in the PR. See `docs/superpowers/specs/2026-08-14-page-minis-design.md`.
 6. **Help center impact.** If the change alters what an admin, producer, or artist would ask, or how the app answers it, update the Help content (`src/lib/help/items.ts`, EN + DE, "Du") in the SAME PR, or state "No help center impact." in the PR description. The help center is authored at spec time, not retrofitted later.
 
 ### Internationalization (i18n)
@@ -425,7 +485,7 @@ When adding a new page:
 - No em/en dashes in copy; German uses the informal "Du". `src/i18n/copyLint.test.ts` enforces both.
 - The language setting is global (account menu → `src/features/i18n/LanguageContext.tsx`), defaults to the browser language, and persists to localStorage. Rolling i18n across the rest of the app UI is incremental, one namespace per domain behind `fallbackLng` — see `docs/superpowers/specs/2026-08-14-i18n-and-help-page-design.md`.
 - **A brand-new user-facing surface is authored through `t()` from the start** — the incremental rollout below is about migrating *existing* English, not a licence to ship new hardcoded copy that "we'll localize later". Add the surface's keys to the right domain namespace in the same PR (e.g. the calendar surface's producer copy lives in `bookings:calendar.*`, artist copy in `availability:calendar.*`, and role-agnostic chrome in `common:calendar.*`), so it never needs a follow-up i18n pass. Purely calendrical labels that date-fns already localizes (weekday-header names) stay on the `dfLocale()` path in `src/lib/dates.ts`, not `t()`.
-- **Phase 2 (in progress): per-domain namespaces beyond shell chrome.** The `dashboard` namespace is the first domain migrated. `src/lib/dashboard/stageChain.ts` and `moduleOnboarding.ts` still return hardcoded English copy on purpose — that content is deferred to a future `onboarding` namespace shared with the bookings and hire-orders setup rails, rather than migrated piecemeal per module. The whole language switcher, including German, is gated behind the `language_packages` entitlement (`src/lib/entitlements.ts`), which ships DARK: `defaultEnabled: false`, so a fresh org runs English-only until a super-admin turns it on for that org (Platform → Organizations). `AppLayout` force-resets the runtime to English whenever the entitlement is off, so translated strings never leak to an org that hasn't been granted the module.
+- **Phase 2 (in progress): per-domain namespaces beyond shell chrome.** The `dashboard` namespace is the first domain migrated. `src/lib/dashboard/stageChain.ts` and `moduleOnboarding.ts` still return hardcoded English copy on purpose — that content is deferred to a future `onboarding` namespace shared with the Get Running v3 wizard, rather than migrated piecemeal per module. The whole language switcher, including German, is gated behind the `language_packages` entitlement (`src/lib/entitlements.ts`), which ships DARK: `defaultEnabled: false`, so a fresh org runs English-only until a super-admin turns it on for that org (Platform → Organizations). `AppLayout` force-resets the runtime to English whenever the entitlement is off, so translated strings never leak to an org that hasn't been granted the module.
 
 ### Edge functions
 
@@ -435,8 +495,8 @@ When adding a new page:
   - **Magic-link login:** `send-login-link` — public, unauthenticated "email me a sign-in link" endpoint (`verify_jwt = false`, necessarily). Existence-hiding by design: the success path and the no-such-account path both return an identical `200 {ok:true}` (genuine RPC/lookup failures instead return a generic `500`, so this isn't a bare-`try/catch`-free endpoint — only the two "did this email have an account" outcomes are indistinguishable). Looks up the user via the indexed `get_user_id_by_email` RPC (not `listUsers` pagination), throttles via the `claim_login_link_slot` RPC (60s cooldown per email, backed by the `auth_link_throttle` table), mints a Supabase `magiclink` via `generateLink` with `redirectTo` = `<appOrigin>/auth/callback?redirect=<clamped path>`, and sends the `magic-link` transactional email. The redirect path is clamped again client-side (`safeRedirectPath`, mirroring `resetPassword.ts`'s `safeRelativeRedirect`) so an absolute/protocol-relative value can't be smuggled through. Existing-user invites also mint a magic link (instead of hitting the password-reset flow) so they land straight on `/auth/callback`.
   - **Airtable sync:** `airtable-schema` (admin-only, user-JWT via `requireOrgRole(org_id, ['admin'])`) reads the org's Airtable schema with the Vault PAT for the mapping UI — returns `{ schemaAccessible, bases }` (no `baseId` in body) or `{ schemaAccessible, tables }` (with `baseId`); an Airtable `403` (PAT missing the `schema.bases:read` scope) surfaces as `{ schemaAccessible: false }` so the UI falls back to typed inputs, and the PAT is never returned to the client. `airtable-poll` is the `*/5 * * * *` cron that upserts `show_dates` from each org's base (each org is throttled by its `airtable_poll_interval_minutes` setting, min 5; an org-admin "Sync now" triggers a single-org poll on demand) (see the Airtable-sync key decision in `docs/adr/README.md`).
   - **Transactional email:** `send-transactional-email`, `preview-transactional-email`, `handle-email-suppression`, `handle-email-unsubscribe`. New templates must be registered in `_shared/transactional-email-templates/registry.ts`.
-  - **Booking engine:** `open-offer-tier` (create suggested bookings) and `close-offer-tier` (close a tier ± withdraw its pending offers) are per-request endpoints taking a `show_date_id`, not crons. The cron functions — `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin) — are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`. The whole engine is gated behind the `booking_flow` entitlement at RLS, edge (`requireFeature`/`checkFeature`), and UI layers — see the `booking_flow` key decision in `docs/adr/README.md` before assuming it's unconditionally on for every org.
-  - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only. `cron-health-watcher` — 15-min cron that classifies every cron job healthy/failing/stale from the dispatch-capture tables and alerts super-admins on failure transitions. `health-rollup` — 15-min cron that recomputes **today's and yesterday's** per-function run/failure counts from the Analytics API into `health_daily`, the durable source behind the System Health 30-day uptime bar (Analytics itself retains only 24h, so nothing older can be reconstructed and nothing can be backfilled). Recomputes whole days rather than incrementing, so it is idempotent under a double-fire or retry, and aborts without writing when Analytics is unavailable so an outage cannot punch a permanent hole in the bar. `email-health-watcher` — ~15-min cron (platform-scoped, `X-Cron-Secret` only, no org-role fallback) that snapshots email deliverability via the `email_health_snapshot` RPC, derives operational/degraded/down, and alerts super-admins in-app (never by email — that's exactly what may be broken) on a fresh transition into degraded/down. Idempotent via `email_health_state.last_state`; volume-gated so a couple of bounces can't false-alarm; aborts without writing on any read/write failure so an outage can't corrupt state or spam alerts.
+  - **Booking engine:** `open-offer-tier` (create suggested bookings) and `close-offer-tier` (close a tier ± withdraw its pending offers) are per-request endpoints taking a `show_date_id`, not crons. The cron functions — `expire-offers` (hourly expiry), `send-offer-digest` (daily 19:00 Berlin), `send-confirmation-digest` (daily 20:00 Berlin) — are org-aware: they iterate active orgs via `getActiveOrgs(admin)` from `_shared/settings.ts` and resolve settings per-org with `resolveOrgSetting`. `expire-offers` retries a transient RPC timeout once before giving up (Supabase's API gateway occasionally cuts off a REST call at 5s even though the query itself runs in well under that) and reports a genuine lookup failure as `503`, not a silent no-op. The whole engine is gated behind the `booking_flow` entitlement at RLS, edge (`requireFeature`/`checkFeature`), and UI layers — see the `booking_flow` key decision in `docs/adr/README.md` before assuming it's unconditionally on for every org.
+  - **Watchers:** `tier-at-risk-watcher` — scans open offer tiers and fires an in-app `tier_at_risk` notification when remaining pending + accepted < required slots. Idempotent (one notification per date/tier). No email; visual only. `cron-health-watcher` — 15-min cron that classifies every cron job healthy/failing/stale from the dispatch-capture tables and alerts super-admins on failure transitions; an HTTP failure only alerts after two consecutive failed observations (debounced, so a single self-healing blip stays silent), while staleness still alerts on first detection since it means the job didn't run at all. `health-rollup` — 15-min cron that recomputes **today's and yesterday's** per-function run/failure counts from the Analytics API into `health_daily`, the durable source behind the System Health 30-day uptime bar (Analytics itself retains only 24h, so nothing older can be reconstructed and nothing can be backfilled). Recomputes whole days rather than incrementing, so it is idempotent under a double-fire or retry, and aborts without writing when Analytics is unavailable so an outage cannot punch a permanent hole in the bar. `email-health-watcher` — ~15-min cron (platform-scoped, `X-Cron-Secret` only, no org-role fallback) that snapshots email deliverability via the `email_health_snapshot` RPC, derives operational/degraded/down, and alerts super-admins in-app (never by email — that's exactly what may be broken) on a fresh transition into degraded/down. Idempotent via `email_health_state.last_state`; volume-gated so a couple of bounces can't false-alarm; aborts without writing on any read/write failure so an outage can't corrupt state or spam alerts.
   - **Platform (super-admin):** `provision-org` (atomic org creation + catalog seeding + first-admin invite, requires super-admin); `resend-invitation` (resend an existing `org_invitations` row's email); `platform-edge-metrics` (System Health metrics proxy to the Supabase Analytics API via the dedicated `ANALYTICS` PAT); `platform-list-users` (cross-org user directory — paginated, capped at 1000, reports `truncated` — joined against `org_memberships`/`organizations`/`artists`/`profiles`, backs Platform → Users); `platform-manage-user` (one endpoint, five actions — `change_email`, `send_password_reset`, `suspend`, `unsuspend`, `delete` — against `auth.admin`; guards against self-action and against removing the last platform admin or the sole admin of any org via `sole_admin_orgs`; every action writes `platform_audit_log`). `platform-list-users`/`platform-manage-user` are cross-org and super-admin-only, distinct from the org-scoped `admin-list-users` above.
   - **Account & data (GDPR):** `delete-my-account` (authenticated; last-admin-guarded via `sole_admin_orgs`; calls `anonymize_user` **via the caller's JWT client** then `auth.admin.deleteUser`) and `export-org-data` (super-admin; full org JSON bundle). Per-user export is the `export_my_data` RPC; org deletion is the `delete_org` RPC (super-admin); account anonymization is the `anonymize_user` RPC.
   - **Import:** `fetch-remote-sheet` — SSRF-guarded proxy that fetches a public Google Sheets CSV for the bulk artist import (`requireOrgRole(org_id, ['producer','admin'])`; host-allowlisted to `docs.google.com` published-CSV URLs, no redirect following, size/timeout caps). The bulk insert itself is the `bulk_import_artists(p_org, p_rows)` RPC — a producer/admin-guarded `SECURITY DEFINER` set-based insert with server-side dedup on `lower(email)`, returning a per-row jsonb status array. Client parse/map/dedup lives in the pure `src/lib/artistImport/*` modules behind the `ArtistImportDialog` wizard.
