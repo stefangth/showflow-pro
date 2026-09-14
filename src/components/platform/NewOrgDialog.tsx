@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { provisionOrg } from "@/data/platform";
 import { slugify } from "./platformFormat";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
+import { OrgKindSelect } from "@/components/settings/OrgKindSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ const schema = z.object({
   slug: z.string().min(1, "Required").regex(/^[a-z0-9-]+$/, "lowercase letters, numbers, hyphens"),
   adminEmail: z.string().email("Valid email required"),
   role: z.enum(["admin", "producer", "artist"]),
+  orgKind: z.enum(["production", "staffing"]),
   features: z.record(z.string(), z.boolean()),
 });
 type FormValues = z.infer<typeof schema>;
@@ -32,7 +34,7 @@ export function NewOrgDialog() {
   const qc = useQueryClient();
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", slug: "", adminEmail: "", role: "admin", features: ALL_FEATURES_OFF },
+    defaultValues: { name: "", slug: "", adminEmail: "", role: "admin", orgKind: "production", features: ALL_FEATURES_OFF },
   });
   const nameReg = form.register("name");
   const features = form.watch("features") as Record<FeatureKey, boolean>;
@@ -46,6 +48,7 @@ export function NewOrgDialog() {
         role: v.role,
         appOrigin: window.location.origin,
         features: v.features as Record<FeatureKey, boolean>,
+        orgKind: v.orgKind,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["platform"] });
@@ -93,6 +96,10 @@ export function NewOrgDialog() {
                 <SelectItem value="artist">artist</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-org-kind">Workspace type</Label>
+            <OrgKindSelect id="new-org-kind" value={form.watch("orgKind")} onChange={(k) => form.setValue("orgKind", k)} />
           </div>
           <div className="space-y-3 border border-border rounded-control p-4">
             <p className="text-sm font-medium">Modules</p>

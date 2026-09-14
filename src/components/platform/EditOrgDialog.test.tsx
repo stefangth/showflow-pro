@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { LanguageProvider } from "@/features/i18n/LanguageContext";
 
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -12,6 +13,10 @@ vi.mock("@/data/platform", () => ({
   exportOrgData: () => exportSpy(),
   deleteOrg: () => deleteSpy(),
   setOrgEntitlement: (...args: unknown[]) => setOrgEntitlementSpy(...args),
+}));
+const setOrgKindSpy = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/data/orgs", () => ({
+  setOrgKind: (...args: unknown[]) => setOrgKindSpy(...args),
 }));
 const fetchEntitlementsSpy = vi.fn().mockResolvedValue([
   { feature: "booking_flow", enabled: true },
@@ -29,15 +34,21 @@ vi.mock("@/components/settings/permissions/PermissionsMatrix", () => ({
 import { EditOrgDialog } from "./EditOrgDialog";
 import { toast } from "sonner";
 
-const org = { org_id: "o1", name: "Acme", slug: "acme", status: "active" } as never;
+const org = {
+  org_id: "o1", name: "Acme", slug: "acme", status: "active",
+  member_count: 0, active_artist_count: 0, bookings_30d: 0, last_activity_at: null,
+  is_demo: false, org_kind: "production",
+} as never;
 const wrap = (ui: React.ReactNode) => (
-  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>
+  <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <LanguageProvider>{ui}</LanguageProvider>
+  </QueryClientProvider>
 );
 
 /** Same as wrap(), but also returns the QueryClient so a test can spy on invalidateQueries. */
 function wrapWithClient(ui: React.ReactNode) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return { client, tree: <QueryClientProvider client={client}>{ui}</QueryClientProvider> };
+  return { client, tree: <QueryClientProvider client={client}><LanguageProvider>{ui}</LanguageProvider></QueryClientProvider> };
 }
 
 describe("EditOrgDialog danger zone", () => {
@@ -112,5 +123,30 @@ describe("EditOrgDialog user rights section", () => {
     const m = await screen.findByTestId("matrix");
     expect(m).toHaveAttribute("data-org", "o1");
     expect(m).toHaveAttribute("data-mode", "platform");
+  });
+});
+
+describe("EditOrgDialog workspace type", () => {
+  beforeEach(() => {
+    setOrgKindSpy.mockClear();
+    (toast.success as ReturnType<typeof vi.fn>).mockClear();
+  });
+
+  it("shows the org's current workspace type", () => {
+    render(wrap(<EditOrgDialog org={org} onClose={() => {}} />));
+    expect(screen.getByRole("combobox", { name: /workspace type/i })).toHaveTextContent("Live production");
+  });
+
+  it("saves immediately on pick, invalidates platform, and toasts", async () => {
+    const { client, tree } = wrapWithClient(<EditOrgDialog org={org} onClose={() => {}} />);
+    const invalidateSpy = vi.spyOn(client, "invalidateQueries");
+    render(tree);
+
+    fireEvent.click(screen.getByRole("combobox", { name: /workspace type/i }));
+    fireEvent.click(await screen.findByRole("option", { name: /staffing agency/i }));
+
+    await waitFor(() => expect(setOrgKindSpy).toHaveBeenCalledWith(expect.anything(), "o1", "staffing"));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Workspace type updated"));
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["platform"] });
   });
 });
