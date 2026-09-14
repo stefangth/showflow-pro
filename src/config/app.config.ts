@@ -5,6 +5,7 @@
 
 import type { FeatureKey } from '@/lib/entitlements';
 import type { HireOrderTermsSetting } from '@/lib/hireOrders/terms';
+import { VOCABULARY, DEFAULT_ORG_KIND, type OrgKind } from '@/lib/orgKind';
 
 /**
  * Routes owned by a gated (entitlement-controlled) module. Checked by
@@ -175,9 +176,11 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   artist: 'Artist',
 };
 
-/** Display label for a role. Tolerant of unknown strings (falls back to the raw value). */
-export const roleLabel = (role: string): string =>
-  ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role;
+/** Display label for a role. Tolerant of unknown strings (falls back to the raw value).
+ *  The producer label follows the workspace type (VOCABULARY[kind].en.roleProducer);
+ *  labels are English-only by convention. */
+export const roleLabel = (role: string, kind: OrgKind = DEFAULT_ORG_KIND): string =>
+  role === 'producer' ? VOCABULARY[kind].en.roleProducer : (ROLE_LABELS[role as keyof typeof ROLE_LABELS] ?? role);
 
 /**
  * One-sentence explanation of what each role can do, shown wherever someone needs to

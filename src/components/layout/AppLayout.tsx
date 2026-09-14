@@ -322,7 +322,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             {viewAsUser && isEditorMode && (
               <div className="mt-2 space-y-0.5">
                 <Badge variant="outline" className="border-warning text-warning">
-                  Viewing as: {viewAsUser.roles.map(roleLabel).join(', ') || 'no role'}
+                  Viewing as: {viewAsUser.roles.map((role) => roleLabel(role)).join(', ') || 'no role'}
                 </Badge>
                 <Token className="block text-eyebrow text-warning truncate">{viewAsUser.email}</Token>
               </div>

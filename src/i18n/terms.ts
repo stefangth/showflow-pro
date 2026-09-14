@@ -1,4 +1,5 @@
 import type { Lang } from './config';
+import { VOCABULARY, DEFAULT_ORG_KIND, type OrgKind, type VocabKey } from '@/lib/orgKind';
 
 /**
  * Canonical bilingual glossary of ShowFlow's domain terms. Defined once here and
@@ -22,6 +23,10 @@ export const TERMS = {
 
 export type TermKey = keyof typeof TERMS;
 
-export function termLabel(key: TermKey, lang: Lang): string {
-  return TERMS[key][lang];
+/** Terms whose label is a workspace-type noun; the rest are kind-independent. */
+const KIND_TERMS = { cast: 'Cast', understudy: 'Understudy', hireOrder: 'HireOrder' } as const satisfies Partial<Record<TermKey, VocabKey>>;
+
+export function termLabel(key: TermKey, lang: Lang, kind: OrgKind = DEFAULT_ORG_KIND): string {
+  const vocabKey = (KIND_TERMS as Partial<Record<TermKey, VocabKey>>)[key];
+  return vocabKey ? VOCABULARY[kind][lang][vocabKey] : TERMS[key][lang];
 }
