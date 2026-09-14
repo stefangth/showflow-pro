@@ -135,6 +135,10 @@ the only place a user-facing term is decided.
 
 **[review]** Empty states state the fact, then the next action. No apology.
 
+**[ci]** Domain nouns in locale files are `{{vocabulary}}` variables resolved from
+`src/lib/orgKind.ts` per the org's workspace type, never bare words. Enforced by
+`src/i18n/vocabularyLint.test.ts`.
+
 ## 7. Icons
 
 **[review]** Lucide only, `currentColor` only. Size follows the control: 14 for small and
