@@ -15,8 +15,12 @@ describe('help filter', () => {
     expect(selectItems('producer', 'all', 'hire order').length).toBeGreaterThan(0);
   });
 
+  // A German word from the copy itself. It used to be "engagementvertrag", which is now
+  // the production value of the {{hireOrder}} vocabulary variable rather than literal text:
+  // selectItems searches the authored strings, which carry the placeholder, not the
+  // substituted noun.
   it('search matches a German term (regardless of the reader\'s language)', () => {
-    expect(selectItems('producer', 'all', 'engagementvertrag').length).toBeGreaterThan(0);
+    expect(selectItems('producer', 'all', 'vormerkungen').length).toBeGreaterThan(0);
   });
 
   it('groupByStage drops empty stages and preserves order', () => {
