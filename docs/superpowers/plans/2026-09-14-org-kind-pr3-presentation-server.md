@@ -36,7 +36,7 @@ The four surface maps done for this plan turned up four gaps between the spec's 
 
 2. **R5.2 minis: only the `bookings` mini exists. CONFIRM scope.** The spec's "first pass: Get running, Today, Dates minis" is inaccurate: there is no Get running mini and no Today (Dashboard) mini. All existing minis already interpolate `{{noun}}` vocabulary, so the noun swap already works for staffing today. The only thing variables cannot do is show a structurally different mini. The single mini with genuinely production-specific structure is `productions` (its illustration and one step name understudies and slots). Recommendation: add an optional `byKind` to `MiniDef` (Task 8) and use it only where a structural difference is real, starting with `productions`. Do not invent Get running / Today minis in this PR.
 
-3. **R5.5 `roleDescription` has no render site.** `roleLabel` and `termLabel` are already kind-aware (PR 2). `ROLE_DESCRIPTIONS` / `roleDescription` in `app.config.ts` still hardcode production nouns, but the doc comment marks their consumers as "planned, not yet built", and grep confirms no `.tsx` renders `roleDescription`. Recommendation: make `roleDescription(role, kind)` kind-aware for completeness and correctness (cheap, keeps the mirror honest), but treat the real R5.5 work as the `org-invitation` email nouns, which fold into R6 (Task 1). No new render site is created here.
+3. **R5.5 `roleDescription` and `roleLabel` DO have a live render site (reviewer-corrected).** `roleLabel` and `termLabel` are already kind-aware (PR 2). `ROLE_DESCRIPTIONS` / `roleDescription` still hardcode production nouns. Contrary to an earlier reading, `src/pages/AcceptInvitePage.tsx` renders both on the accept-invite success card: `roleLabel(role)` at line 540 and `roleDescription(role)` at line 541 (asserted in `AcceptInvitePage.test.tsx`). Both are called without a kind, so a staffing invitee currently sees "Production Team" and the production role sentence right after joining, which contradicts "fully live for staffing orgs". This is a real surface, not hypothetical. Recommendation: make `roleDescription(role, kind)` kind-aware AND wire the joined org's `org_kind` into both calls in `AcceptInvitePage` (the joined org is already resolved on line 492, so `org_kind` is one property access away). Also thread kind at the other same-org end-user consumers of `roleLabel`/`roleDescription` (the People pane) via `useOrgKind()`; leave the cross-org Platform sheets on the production default (the active org's kind is the wrong kind for another org's row). The `org-invitation` email nouns remain the other half of R5.5 and fold into R6 (Task 1). Task 11 is rewritten accordingly.
 
 4. **R6 PDF token collision. No decision needed, but it drives Task 2.** In `pdfCopy.ts` the runtime data tokens `{{cast}}` (the billing cast reference) and `{{artist}}` (the person's name) collide with the vocabulary keys `cast` and `artist`. A naive `interpolateVocabulary` pass would replace them with "team" / "staff member" before `applyTokens` injects the real values. Resolution (Task 2): rename those runtime tokens in `pdfCopy.ts` and `render.tsx` to non-colliding names (`{{castRef}}`, `{{artistName}}`), exactly as PR 2 renamed the colliding runtime variables on the client side, then the domain-noun prose becomes `{{Cast}}` / `{{Artist}}` vocabulary tokens. `{{role}}` does not collide (`role` is not a vocab key) and is left alone.
 
@@ -303,21 +303,29 @@ Do this task only if the owner rejected decision 1 at Task 0. `SAMPLE_PREVIEW` i
 
 ---
 
-## Task 11: Kind-aware `roleDescription` (R5.5 client remainder)
+## Task 11: Kind-aware `roleDescription` and wire the role render sites (R5.5 client remainder)
 
 **Files:**
-- Modify: `src/config/app.config.ts` (inside the ROLE LABELS mirror block: `ROLE_DESCRIPTIONS` nouns become vocabulary lookups and `roleDescription(role, kind = DEFAULT_ORG_KIND)` gains the param, mirroring `roleLabel`)
+- Modify: `src/config/app.config.ts` (inside the ROLE LABELS mirror block: `ROLE_DESCRIPTIONS` nouns become vocabulary lookups and `roleDescription(role, kind = DEFAULT_ORG_KIND)` gains the param, mirroring the already-kind-aware `roleLabel`)
 - Modify (regenerate): `supabase/functions/_shared/roles.ts`
-- Modify: `src/config/roleLabel.test.ts` or a new `roleDescription.test.ts`
+- Modify: `src/config/appConfig.roles.test.ts` (extend for the kind param; note the existing dash gate at lines 38, 42)
+- Modify: `src/pages/AcceptInvitePage.tsx` (pass the joined org's kind into both `roleLabel(role)` at line 540 and `roleDescription(role)` at line 541) and `src/pages/AcceptInvitePage.test.tsx`
+- Modify: the People pane role renderers (`src/components/admin/people/*` where `roleLabel`/`roleDescription` render the active org's roles) and their tests; pass `useOrgKind()`
 
 **Interfaces:**
-- Produces: `roleDescription(role, kind)`; production default byte-identical. No new render site (the consumers remain "planned"); this keeps the description honest for when they are built and keeps the edge mirror correct.
+- Produces: `roleDescription(role, kind)`, production default byte-identical; and every same-org end-user render of a role label or description reads in the org's vocabulary. Cross-org Platform sheets stay on production (a viewer's active-org kind is the wrong kind for another org's row; changing those is out of scope).
 
-- [ ] **Step 1: Write the failing test.** `roleDescription('producer', 'en')` unchanged; `roleDescription('producer', 'staffing')` uses "clients"/"shifts"/"people". (English-only, matching `roleLabel`.)
+- [ ] **Step 1: Write the failing tests.** Config: `roleDescription('producer', 'en')` unchanged; `roleDescription('producer', 'staffing')` uses "clients"/"shifts"/"people" (English-only, matching `roleLabel`); the dash gate stays green. AcceptInvitePage: render the success card for a joined staffing org (memberships/orgs seeded with `org_kind: 'staffing'`) and assert the card shows "Booking team" and the staffing role sentence, not "Production Team"/"productions"; a production join is unchanged.
 
-- [ ] **Step 2: Implement.** Build the descriptions from `VOCABULARY[kind].en` tokens (or keep the English literal for production and substitute for staffing). Regenerate the mirror.
+- [ ] **Step 2: Run to verify they fail.** `npx vitest run src/config src/pages/AcceptInvitePage.test.tsx`.
 
-- [ ] **Step 3: Run + sync check + commit.** `npx vitest run src/config && npm run sync:mirrors:check`; commit `make roleDescription workspace-type aware`.
+- [ ] **Step 3: Implement `roleDescription(role, kind)`.** Build the descriptions from `VOCABULARY[kind].en` tokens (production is byte-identical). Regenerate the mirror (`npm run sync:mirrors && npm run sync:mirrors:check`).
+
+- [ ] **Step 4: Wire AcceptInvitePage.** Compute `const joinedKind = orgs.find((o) => o.id === joined.orgId)?.org_kind ?? 'production'` next to the existing `orgName` line (492), and pass it: `roleLabel(role, joinedKind)` and `roleDescription(role, joinedKind)`. (`orgs` rows already carry `org_kind`.)
+
+- [ ] **Step 5: Wire the People pane.** For each same-org role render, pass `useOrgKind()` into `roleLabel`/`roleDescription`. Leave `src/components/platform/*` (cross-org, super-admin) on the default. Update the affected tests.
+
+- [ ] **Step 6: Run + lint + typecheck + sync check + commit.** `npx vitest run src/config src/pages/AcceptInvitePage.test.tsx src/components/admin/people && npx eslint <changed> --max-warnings 0 && npx tsc -p tsconfig.app.json --noEmit && npm run sync:mirrors:check`; commit `render workspace-type role labels on invite and people surfaces`.
 
 ---
 
