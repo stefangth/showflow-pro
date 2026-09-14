@@ -92,13 +92,13 @@ export const HIRE_ORDER_COPY_DEFAULTS: HireOrderCopy = {
   badge_issued: "Issued",
 
   title_lead: "This order confirms the engagement of",
-  billing_role_and_cast: "{{role}} · billed as {{cast}}",
-  billing_cast_only: "Billed as {{cast}}",
+  billing_role_and_cast: "{{role}} · billed as {{castRef}}",
+  billing_cast_only: "Billed as {{castRef}}",
 
   party_producer_label: "Hiring party, the Producer",
   party_agent: "Booking agent: {{agent_name}}",
   party_artist_label: "Engaged artist, the Artist",
-  party_cast_reference: "Cast reference: {{cast}}",
+  party_cast_reference: "Cast reference: {{castRef}}",
   party_engagement: "Engagement: {{role}}",
 
   facts_date_label: "Date",
@@ -130,7 +130,7 @@ export const HIRE_ORDER_COPY_DEFAULTS: HireOrderCopy = {
 
   signature_for_producer: "For the Producer · {{legal_name}}",
   signature_producer_hint: "Name · Date {{date}}",
-  signature_for_artist: "The Artist · {{artist}}",
+  signature_for_artist: "The Artist · {{artistName}}",
   signature_signed_electronically: "Signed electronically · {{date}}",
   signature_artist_hint: "Signature · Date",
 
@@ -164,13 +164,13 @@ export const HIRE_ORDER_COPY_DE: HireOrderCopy = {
   badge_issued: "Ausgestellt",
 
   title_lead: "Dieser Vertrag bestätigt das Engagement von",
-  billing_role_and_cast: "{{role}} · gebucht als {{cast}}",
-  billing_cast_only: "Gebucht als {{cast}}",
+  billing_role_and_cast: "{{role}} · gebucht als {{castRef}}",
+  billing_cast_only: "Gebucht als {{castRef}}",
 
   party_producer_label: "Auftraggeber, der Produzent",
   party_agent: "Buchungsagentur: {{agent_name}}",
   party_artist_label: "Engagierter Artist, der Artist",
-  party_cast_reference: "Besetzung: {{cast}}",
+  party_cast_reference: "Besetzung: {{castRef}}",
   party_engagement: "Engagement: {{role}}",
 
   facts_date_label: "Datum",
@@ -202,7 +202,7 @@ export const HIRE_ORDER_COPY_DE: HireOrderCopy = {
 
   signature_for_producer: "Für den Produzenten · {{legal_name}}",
   signature_producer_hint: "Name · Datum {{date}}",
-  signature_for_artist: "Der Artist · {{artist}}",
+  signature_for_artist: "Der Artist · {{artistName}}",
   signature_signed_electronically: "Elektronisch unterschrieben · {{date}}",
   signature_artist_hint: "Unterschrift · Datum",
 
@@ -235,21 +235,108 @@ export function applyTokens(
   );
 }
 
-/** Merge per-org overrides over the defaults. A blank/whitespace override falls
- *  back to the default; the result is always a complete record. */
+/** Plain {{name}} substitution from a resolved vocabulary table. A local, import-free
+ *  copy of interpolateVocabulary (src/lib/orgKind.ts): this file is a whole-file mirror
+ *  that must import nothing (the edge twin resolves ../orgKind at a different relative
+ *  depth than this source's ../../orgKind, so no single import path works on both sides).
+ *  Unknown tokens (the runtime data tokens {{castRef}}, {{artistName}}, {{role}}, dates,
+ *  counts) are left verbatim for applyTokens. */
+function substituteVocabulary(text: string, vocab: Record<string, string>): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (whole, name: string) =>
+    Object.prototype.hasOwnProperty.call(vocab, name) ? vocab[name] : whole,
+  );
+}
+
+/** Production vocabulary fallback, used when resolveHireOrderCopy is called WITHOUT an
+ *  explicit vocab table (the caller threads the org's workspace-type table in; until it
+ *  does, and for every plain call, this stands in). Its words MUST equal
+ *  VOCABULARY.production in src/lib/orgKind.ts, which is exactly what keeps a plain
+ *  resolveHireOrderCopy(...) byte-identical to the pre-variable prose. Import-free by the
+ *  mirror rule above. */
+const PRODUCTION_VOCAB: Record<"en" | "de", Record<string, string>> = {
+  en: {
+    show: "show", shows: "shows", Show: "Show", Shows: "Shows",
+    showDate: "date", showDates: "dates", ShowDate: "Date", ShowDates: "Dates",
+    artist: "artist", artists: "artists", Artist: "Artist", Artists: "Artists",
+    production: "production", productions: "productions", Production: "Production", Productions: "Productions",
+    cast: "cast", casts: "casts", Cast: "Cast", Casts: "Casts",
+    understudy: "understudy", understudies: "understudies", Understudy: "Understudy", Understudies: "Understudies",
+    skill: "skill", skills: "skills", Skill: "Skill", Skills: "Skills",
+    hireOrder: "contract", hireOrders: "contracts", HireOrder: "Contract", HireOrders: "Contracts",
+    roleProducer: "Production Team", kind: "production",
+  },
+  de: {
+    show: "Show", shows: "Shows", Show: "Show", Shows: "Shows",
+    showDate: "Termin", showDates: "Termine", ShowDate: "Termin", ShowDates: "Termine",
+    artist: "Artist", artists: "Artists", Artist: "Artist", Artists: "Artists",
+    production: "Produktion", productions: "Produktionen", Production: "Produktion", Productions: "Produktionen",
+    cast: "Besetzung", casts: "Besetzungen", Cast: "Besetzung", Casts: "Besetzungen",
+    understudy: "Zweitbesetzung", understudies: "Zweitbesetzungen", Understudy: "Zweitbesetzung", Understudies: "Zweitbesetzungen",
+    skill: "Skill", skills: "Skills", Skill: "Skill", Skills: "Skills",
+    hireOrder: "Engagementvertrag", hireOrders: "Engagementverträge", HireOrder: "Engagementvertrag", HireOrders: "Engagementverträge",
+    roleProducer: "Production Team", kind: "production",
+  },
+};
+
+/**
+ * Vocabulary templates: the copy keys that name a domain noun, authored with {{noun}}
+ * variables. resolveHireOrderCopy substitutes these against the resolved workspace-type
+ * table (staffing swaps the words) for any key still at its language default. Kept
+ * SEPARATE from HIRE_ORDER_COPY_DEFAULTS / HIRE_ORDER_COPY_DE, which stay clean prose,
+ * because render.tsx reads `input.copy ?? HIRE_ORDER_COPY_DEFAULTS` and sampleDocument.ts
+ * plus the render tests read the default maps RAW, so a bare {{Cast}} token in the
+ * defaults would leak into any direct or default render. Under the production table every
+ * value here substitutes back to the exact clean default, which is the byte-identity
+ * guarantee (guarded by pdfCopy.orgKind.test.ts). Only nouns whose production word equals
+ * the current literal are tokenized, so the runtime tokens {{castRef}}/{{artistName}} are
+ * left untouched here and filled later by applyTokens. */
+const HIRE_ORDER_COPY_VOCAB_TEMPLATES: Record<"en" | "de", Partial<Record<CopyKey, string>>> = {
+  en: {
+    party_artist_label: "Engaged {{artist}}, the {{Artist}}",
+    party_cast_reference: "{{Cast}} reference: {{castRef}}",
+    signature_for_artist: "The {{Artist}} · {{artistName}}",
+  },
+  de: {
+    party_artist_label: "Engagierter {{Artist}}, der {{Artist}}",
+    party_cast_reference: "{{Cast}}: {{castRef}}",
+    signature_for_artist: "Der {{Artist}} · {{artistName}}",
+  },
+};
+
+/** Merge per-org overrides over the defaults, then substitute {{noun}} vocabulary
+ *  variables. A blank/whitespace override falls back to the default; the result is always
+ *  a complete record.
+ *
+ *  `vocab` is a RESOLVED vocabulary table (VOCABULARY[kind][locale] shape, typed
+ *  structurally as Record<string, string> so this file imports nothing). When omitted it
+ *  falls back to the production words for `locale`; since those equal the hardcoded
+ *  nouns, a plain call (or a production table) is byte-identical to before {{noun}}
+ *  variables existed. A staffing table swaps the words. A key still at its language
+ *  default draws its noun from the vocabulary template above; a key an admin overrode is
+ *  substituted as authored, so a {{Show}} in a custom string still resolves. The runtime
+ *  data tokens {{castRef}}, {{artistName}}, {{role}} and every other {{...}} are left for
+ *  applyTokens. */
 export function resolveHireOrderCopy(
   overrides?: Partial<HireOrderCopy> | null,
   locale: "en" | "de" = "en",
+  vocab?: Record<string, string>,
 ): HireOrderCopy {
   // Select the language base; a sparse per-org override still layers on top.
   // English (default) stays byte-identical, so the edge renderer is unchanged
   // for every org that has not opted into German.
   const base = locale === "de" ? HIRE_ORDER_COPY_DE : HIRE_ORDER_COPY_DEFAULTS;
-  if (!overrides) return { ...base };
   const out = { ...base };
-  for (const key of Object.keys(HIRE_ORDER_COPY_DEFAULTS) as CopyKey[]) {
-    const v = overrides[key];
-    if (typeof v === "string" && v.trim() !== "") out[key] = v;
+  if (overrides) {
+    for (const key of Object.keys(HIRE_ORDER_COPY_DEFAULTS) as CopyKey[]) {
+      const v = overrides[key];
+      if (typeof v === "string" && v.trim() !== "") out[key] = v;
+    }
+  }
+  const table = vocab ?? PRODUCTION_VOCAB[locale];
+  const templates = HIRE_ORDER_COPY_VOCAB_TEMPLATES[locale];
+  for (const key of Object.keys(out) as CopyKey[]) {
+    const source = out[key] === base[key] ? (templates[key] ?? out[key]) : out[key];
+    out[key] = substituteVocabulary(source, table);
   }
   return out;
 }
