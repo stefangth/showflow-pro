@@ -66,6 +66,11 @@
       "label": "Sprache des Arbeitsbereichs",
       "help": "Die Sprache der E-Mails und Engagementvertrag-PDFs, die dein Arbeitsbereich versendet. Jede Person wählt ihre eigene App-Sprache weiterhin im Kontomenü.",
       "saved": "Sprache des Arbeitsbereichs aktualisiert"
+    },
+    "kind": {
+      "label": "Arbeitsbereich-Typ",
+      "help": "Ändert die Wörter, die die App verwendet. An deinen Daten ändert sich nichts.",
+      "saved": "Arbeitsbereich-Typ aktualisiert"
     }
   },
   "permissions": {
