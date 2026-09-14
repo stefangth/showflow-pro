@@ -69,6 +69,10 @@
     "continue": "Weiter"
   },
   "steps": {
+    "workspace": {
+      "title": "Wähle deinen Arbeitsbereich-Typ",
+      "hint": "Live-Produktion oder Personalagentur. Legt die Wörter fest, die die App verwendet."
+    },
     "source": {
       "title": "Wähle, woher deine Termine kommen",
       "hint": "Verbinde Airtable oder lege Produktionen von Hand an."
@@ -135,6 +139,16 @@
     }
   },
   "guide": {
+    "workspace": {
+      "title": "Wähle deinen Arbeitsbereich-Typ",
+      "body": "Der Typ bestimmt die Wörter, die du überall siehst: Shows und Artists für eine Live-Produktion, Projekte und Personen für eine Personalagentur. Deine Daten ändern sich dadurch nie.",
+      "points": [
+        "Live-Produktion: Shows, Termine, Artists und Besetzungen.",
+        "Personalagentur: Kunden, Schichten, Teammitglieder und Teams.",
+        "Du kannst jederzeit unter Einstellungen, Organisation wechseln."
+      ],
+      "article": "Mehr über Arbeitsbereich-Typen lesen"
+    },
     "source": {
       "title": "Wähle, woher deine Termine kommen",
       "body": "Jeder weitere Schritt liest von deinen Terminen: Besetzungsplan, Prioritäten und wer gefragt werden kann. Wähle die Quelle, die zu deinem Team passt.",
@@ -342,6 +356,12 @@
       "filterPlaceholder": "Artists nach Namen suchen",
       "filterNoMatch": "Kein Artist passt zu diesem Namen.",
       "showAll": "Alle {{count}} Artists zeigen"
+    },
+    "workspace": {
+      "heading": "Was für ein Arbeitsbereich ist das",
+      "sub": "Wähle einen. Du kannst ihn später in den Einstellungen ändern.",
+      "continue": "Weiter",
+      "readOnly": "Bitte einen Admin, den Arbeitsbereich-Typ zu wählen."
     },
     "source": {
       "heading": "Woher kommen deine Termine",

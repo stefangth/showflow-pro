@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import {
+  Briefcase,
   Search,
   Zap,
   Filter,
@@ -27,6 +28,7 @@ import type { GetRunningPhaseV3, GetRunningStepKey } from "@/lib/getRunning/step
  *  rail rather than in `steps.ts` (which stays UI-free) or a shared registry, since nothing
  *  else in the v3 board needs a step icon. */
 const STEP_ICON: Record<GetRunningStepKey, LucideIcon> = {
+  workspace: Briefcase,
   source: Search,
   connect: Zap,
   map: Filter,

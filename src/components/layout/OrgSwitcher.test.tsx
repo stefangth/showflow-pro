@@ -14,7 +14,7 @@ describe("OrgSwitcher", () => {
   });
 
   it("shows the org name as a static label for a single-org user", () => {
-    const org = { id: "o1", name: "Acme", slug: "acme", status: "active", is_demo: false };
+    const org = { id: "o1", name: "Acme", slug: "acme", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
     vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({ orgs: [org], currentOrg: org, switchOrg: vi.fn() }));
     render(<OrgSwitcher />);
     expect(screen.getByText("Acme")).toBeTruthy();
@@ -23,8 +23,8 @@ describe("OrgSwitcher", () => {
   });
 
   it("renders a switcher trigger for a multi-org user", () => {
-    const a = { id: "o1", name: "Acme", slug: "acme", status: "active", is_demo: false };
-    const b = { id: "o2", name: "Globex", slug: "globex", status: "active", is_demo: false };
+    const a = { id: "o1", name: "Acme", slug: "acme", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
+    const b = { id: "o2", name: "Globex", slug: "globex", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
     vi.mocked(useAuth).mockReturnValue(partialMock<ReturnType<typeof useAuth>>({ orgs: [a, b], currentOrg: a, switchOrg: vi.fn() }));
     render(<OrgSwitcher />);
     expect(screen.getByLabelText("Switch organization")).toBeTruthy();

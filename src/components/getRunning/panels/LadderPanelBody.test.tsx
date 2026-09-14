@@ -25,7 +25,7 @@ vi.mock("@/hooks/useCapabilities", async (importOriginal) => {
   };
 });
 
-const TEST_ORG = { id: "org-1", name: "Test Org", slug: "test-org", status: "active", is_demo: false };
+const TEST_ORG = { id: "org-1", name: "Test Org", slug: "test-org", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 
 // Hamburg already has a tier-1 (cast "nord"); Leipzig has a future date but no tier-1 —
 // exactly the "one ranked, one not" seam the brief asks this test to cover.

@@ -7,15 +7,17 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useFeature } from "@/hooks/useEntitlements";
-import { renameOrg } from "@/data/orgs";
+import { renameOrg, setOrgKind } from "@/data/orgs";
 import { fetchOrgLanguage, setOrgLanguage } from "@/data/settings";
 import { coerceLocale, type ServerLocale } from "@/lib/i18n/orgLanguage";
 import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS } from "@/i18n/config";
+import type { OrgKind } from "@/lib/orgKind";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { OrgKindSelect } from "./OrgKindSelect";
 
 const schema = z.object({ name: z.string().min(1, "Required") });
 type Values = z.infer<typeof schema>;
@@ -30,7 +32,7 @@ interface Props {
  *  read-only unless granted the `rename_org` capability; admins always may edit. */
 export function OrganizationTab({ readOnly = false }: Props) {
   const { t } = useTranslation("settings");
-  const { currentOrg, refreshOrgs } = useAuth();
+  const { currentOrg, refreshOrgs, hasRole } = useAuth();
   const languagePacksEnabled = useFeature("language_packages");
   const qc = useQueryClient();
   const form = useForm<Values>({ resolver: zodResolver(schema), values: { name: currentOrg?.name ?? "" } });
@@ -60,6 +62,15 @@ export function OrganizationTab({ readOnly = false }: Props) {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const kindMutation = useMutation({
+    mutationFn: (kind: OrgKind) => setOrgKind(supabase, currentOrg!.id, kind),
+    onSuccess: async () => {
+      await refreshOrgs(); // currentOrg.org_kind feeds VocabularyBridge; refresh so words swap at once
+      toast.success(t("organization.kind.saved"));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (!currentOrg) return null;
 
   return (
@@ -81,6 +92,17 @@ export function OrganizationTab({ readOnly = false }: Props) {
           </div>
           <Button type="submit" disabled={readOnly || mutation.isPending}>{mutation.isPending ? t("organization.saving") : t("organization.save")}</Button>
         </form>
+
+        <div className="space-y-1.5 max-w-md mt-8">
+          <Label htmlFor="org-kind">{t("organization.kind.label")}</Label>
+          <OrgKindSelect
+            id="org-kind"
+            value={currentOrg.org_kind}
+            onChange={(k) => kindMutation.mutate(k)}
+            disabled={!hasRole("admin") || kindMutation.isPending}
+          />
+          <p className="text-xs text-muted-foreground">{t("organization.kind.help")}</p>
+        </div>
 
         {languagePacksEnabled && (
           <div className="space-y-1.5 max-w-md mt-8">

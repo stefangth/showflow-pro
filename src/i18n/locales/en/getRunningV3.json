@@ -69,6 +69,10 @@
     "continue": "Continue"
   },
   "steps": {
+    "workspace": {
+      "title": "Choose your workspace type",
+      "hint": "Live production or staffing agency. Sets the words the app uses."
+    },
     "source": {
       "title": "Choose where your dates come from",
       "hint": "Connect Airtable or add productions by hand."
@@ -135,6 +139,16 @@
     }
   },
   "guide": {
+    "workspace": {
+      "title": "Choose your workspace type",
+      "body": "The type decides the words you see everywhere: shows and artists for a live production, projects and people for a staffing agency. It never changes your data.",
+      "points": [
+        "Live production: shows, dates, artists and casts.",
+        "Staffing agency: clients, shifts, staff and teams.",
+        "Switch any time in Settings, Organization."
+      ],
+      "article": "Read more about workspace types"
+    },
     "source": {
       "title": "Choose where your dates come from",
       "body": "Every downstream step reads from your dates: casting breakdown, priorities and who can be asked. Pick the source that fits how your team already works.",
@@ -342,6 +356,12 @@
       "filterPlaceholder": "Search artists by name",
       "filterNoMatch": "No artist matches that name.",
       "showAll": "Show all {{count}} artists"
+    },
+    "workspace": {
+      "heading": "What kind of workspace is this",
+      "sub": "Pick one. You can change it later in Settings.",
+      "continue": "Continue",
+      "readOnly": "Ask an admin to choose the workspace type."
     },
     "source": {
       "heading": "Where do your dates come from",

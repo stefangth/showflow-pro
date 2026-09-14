@@ -15,6 +15,7 @@ import type { GetRunningStepKey } from "./steps";
 export type StepHelpTarget = { item: string } | { q: string };
 
 export const STEP_HELP: Record<GetRunningStepKey, StepHelpTarget> = {
+  workspace: { q: "workspace type" }, // No single dedicated answer yet; prefills the help search instead of an `item` deep link.
   source: { item: "A3.8" }, // Can I import dates from a Google Sheet instead of Airtable?
   connect: { item: "A4.2" }, // Did the Airtable sync work? Why are dates missing?
   map: { item: "A3.13" }, // Which Airtable columns do I have to map?

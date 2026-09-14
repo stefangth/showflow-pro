@@ -24,7 +24,7 @@ import { fetchSkills, fetchSkillEligibilityGaps, setArtistSkills, type SkillGap 
 import { fetchActiveArtistOptions } from "@/data/artists";
 import { ArtistSkillAssignList } from "@/components/getRunning/v3/steps/ArtistSkillAssignList";
 
-const ORG = { id: "org-1", name: "Aurora", slug: "aurora", status: "active" as const, is_demo: false };
+const ORG = { id: "org-1", name: "Aurora", slug: "aurora", status: "active" as const, is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 
 function seedGaps(gaps: SkillGap[]) {
   vi.mocked(fetchSkillEligibilityGaps).mockResolvedValue(gaps);

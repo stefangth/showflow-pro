@@ -40,3 +40,50 @@ describe("NewOrgDialog modules section", () => {
     );
   });
 });
+
+describe("NewOrgDialog workspace type", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const fillRequiredFields = () => {
+    fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: "Acme" } });
+    fireEvent.change(screen.getByLabelText(/^slug$/i), { target: { value: "acme" } });
+    fireEvent.change(screen.getByLabelText(/first admin email/i), { target: { value: "a@acme.com" } });
+  };
+
+  it("submits orgKind: production by default", async () => {
+    const provision = vi.spyOn(platform, "provisionOrg").mockResolvedValue("o1");
+    renderWithProviders(<NewOrgDialog />);
+    fireEvent.click(screen.getByRole("button", { name: /new organization/i }));
+    fillRequiredFields();
+
+    fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+
+    await waitFor(() =>
+      expect(provision).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ orgKind: "production" }),
+      ),
+    );
+  });
+
+  it("submits the picked workspace type", async () => {
+    const provision = vi.spyOn(platform, "provisionOrg").mockResolvedValue("o1");
+    renderWithProviders(<NewOrgDialog />);
+    fireEvent.click(screen.getByRole("button", { name: /new organization/i }));
+    fillRequiredFields();
+
+    fireEvent.click(screen.getByRole("combobox", { name: /workspace type/i }));
+    fireEvent.click(await screen.findByRole("option", { name: /staffing agency/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+
+    await waitFor(() =>
+      expect(provision).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ orgKind: "staffing" }),
+      ),
+    );
+  });
+});

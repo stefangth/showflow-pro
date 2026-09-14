@@ -96,6 +96,14 @@
       "start": "// >>> ROLE LABELS MIRROR (keep byte-identical with the twin file) >>>",
       "end": "// <<< ROLE LABELS MIRROR <<<",
       "why": "Org-role display labels. The org-invitation email renders the friendly label ('Production Team') instead of the raw enum; the surrounding imports differ per runtime."
+    },
+    {
+      "mode": "block",
+      "source": "src/lib/orgKind.ts",
+      "target": "supabase/functions/_shared/orgKind.ts",
+      "start": "// >>> ORG KIND REGISTRY MIRROR (keep byte-identical with the twin file) >>>",
+      "end": "// <<< ORG KIND REGISTRY MIRROR <<<",
+      "why": "Workspace-type registry + vocabulary tables. Emails and PDFs substitute {{noun}} variables from the same tables the app UI uses; the edge file adds the DB-backed resolveOrgKind below the block."
     }
   ]
 }

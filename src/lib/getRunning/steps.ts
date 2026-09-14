@@ -1,4 +1,4 @@
-// Pure composer for the Wireflow v3 /get-running board: 16-step / 3-phase model built on
+// Pure composer for the Wireflow v3 /get-running board: 17-step / 3-phase model built on
 // top of the two existing setup-readiness modules (src/lib/bookings/setupStatus.ts,
 // src/lib/hireOrders/setupStatus.ts) plus a handful of new signals those modules don't
 // carry yet (dates source/connect/map/cities split, skills, team, fee, document).
@@ -7,7 +7,9 @@
 // (src/lib/getRunning/tasks.ts) so v1 stays byte-stable; it mirrors v1's `makeBookingTask`/
 // `makeHireTask`/`withActionability` idioms instead of sharing code with them.
 //
-// All 16 steps now carry real signals. Phase 2 wired the get_dates split (source/connect/map/cities/productions);
+// All 17 steps now carry real signals. Phase 2 wired the get_dates split (source/connect/map/cities/productions);
+// PR 1 of the org-kind (workspace type) initiative (Task 12) added `workspace` as the get_dates
+// phase's first step, advisory only (`block: null`), so it never gates the first offer.
 // Phase 3 wired skills/fee/document. See the task briefs for the exact per-step signal source.
 // The booking/hiring setups + get_dates/skills/fee/document signals compose the whole board.
 //
@@ -18,6 +20,7 @@ import type { HireOrderSetupStatus } from "@/lib/hireOrders/setupStatus";
 
 export type GetRunningPhaseKey = "get_dates" | "bookable" | "paperwork";
 export type GetRunningStepKey =
+  | "workspace"
   | "source"
   | "connect"
   | "map"
@@ -99,6 +102,10 @@ export interface GetRunningInputV3 {
    *  would otherwise be vacuously true on a blank org: "every date has a city" holds
    *  trivially with no dates, and "review your productions" says nothing about dates. */
   hasAnyDates: boolean;
+  /** organizations.org_kind_set_at is non-null: an admin or super-admin explicitly chose the
+   *  workspace type. The default is a kind too, so this is a "was it decided" signal, like
+   *  feeDone for an inherited platform default. */
+  orgKindChosen: boolean;
   producerCount: number | null; // team step done when > 0
   /** How many skills are required by at least one part but held by no active artist.
    *  0 means the skill model is coherent, including the legitimate case of an org that
@@ -175,6 +182,10 @@ export function composeGetRunningV3(input: GetRunningInputV3): GetRunningModelV3
   if (input.bookingOn) {
     const isManualSource = input.datesSource === "manual";
     const getDatesConfigs: StepConfig[] = [
+      // `block: null`: the workspace type is advisory, not a hard gate. canFirstOffer
+      // and issuing only ever look at steps that carry a real `block`, so leaving this
+      // one `null` is what keeps an unchosen workspace type from blocking the first offer.
+      { key: "workspace", done: input.orgKindChosen, block: null, adminOnly: true, placeholder: false, capability: false },
       { key: "source", done: input.datesSource != null, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows },
       { key: "connect", done: input.datesConnectDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows, hidden: isManualSource },
       { key: "map", done: input.datesMapDone, block: hardBlock, adminOnly: false, placeholder: false, capability: input.canManageShows, hidden: isManualSource },

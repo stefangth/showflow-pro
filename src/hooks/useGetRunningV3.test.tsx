@@ -14,7 +14,7 @@ function seed(s: Record<string, TableSeed>) {
 import { useGetRunningV3 } from "./useGetRunningV3";
 
 const ORG_ID = "org-1";
-const TEST_ORG = { id: ORG_ID, name: "Test Org", slug: "test-org", status: "active", is_demo: false };
+const TEST_ORG = { id: ORG_ID, name: "Test Org", slug: "test-org", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 
 /** A fully entitled, fully configured org: every table read this hook's chain of hooks
  *  touches resolves without error. Mirrors `useGetRunning.test.tsx`'s `fullySeeded()`, plus
@@ -57,7 +57,7 @@ const LIVE_DATE: TableSeed = {
 beforeEach(() => fullySeeded());
 
 describe("useGetRunningV3", () => {
-  it("returns a 16-step model for an admin with both modules on", async () => {
+  it("returns a 17-step model for an admin with both modules on", async () => {
     const { result } = renderHookWithProviders(() => useGetRunningV3(), {
       authOverrides: {
         currentOrg: TEST_ORG,
@@ -71,7 +71,7 @@ describe("useGetRunningV3", () => {
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.model).not.toBeNull();
-    expect(result.current.model!.totalCount).toBe(16);
+    expect(result.current.model!.totalCount).toBe(17);
     expect(result.current.model!.bookingOn).toBe(true);
     expect(result.current.model!.hireOrdersOn).toBe(true);
   });

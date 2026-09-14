@@ -5,6 +5,7 @@ import type { EdgeFnMetric, EmailHealth } from "@/lib/systemHealth";
 import type { HealthDay } from "@/lib/uptime";
 import { SYSTEM_HEALTH, type AppRole } from "@/config/app.config";
 import type { EntitlementRow, FeatureKey } from "@/lib/entitlements";
+import { coerceOrgKind, type OrgKind } from "@/lib/orgKind";
 import {
   normalizeBookingFlowTemplates,
   type BookingFlowTemplates,
@@ -20,6 +21,7 @@ export interface OrgStat {
   bookings_30d: number;
   last_activity_at: string | null;
   is_demo: boolean;
+  org_kind: OrgKind;
 }
 
 export interface PlatformAdmin {
@@ -202,16 +204,25 @@ export async function fetchEmailHealth(
 
 /** Every organization (super-admin only; RLS short-circuits is_org_member). */
 export async function fetchAllOrgs(client: SupabaseClient<Database>): Promise<Organization[]> {
-  const { data, error } = await client.from("organizations").select("id, name, slug, status, is_demo").order("name");
+  const { data, error } = await client
+    .from("organizations")
+    .select("id, name, slug, status, is_demo, org_kind, org_kind_set_at")
+    .order("name");
   if (error) throw error;
-  return (data ?? []) as Organization[];
+  return ((data ?? []) as unknown as Organization[]).map((row) => ({
+    ...row,
+    org_kind: coerceOrgKind(row.org_kind),
+  }));
 }
 
 /** Per-org usage metrics (super-admin only). */
 export async function fetchPlatformOrgStats(client: SupabaseClient<Database>): Promise<OrgStat[]> {
   const { data, error } = await client.rpc("platform_org_stats");
   if (error) throw error;
-  return (data ?? []) as unknown as OrgStat[];
+  return ((data ?? []) as unknown as OrgStat[]).map((row) => ({
+    ...row,
+    org_kind: coerceOrgKind(row.org_kind),
+  }));
 }
 
 /** Provision a new org + seed catalog + invite first admin (super-admin only). Returns org_id.
@@ -219,7 +230,7 @@ export async function fetchPlatformOrgStats(client: SupabaseClient<Database>): P
  *  forwarded as `entitlements` in the request body for the edge function to seed. */
 export async function provisionOrg(
   client: SupabaseClient<Database>,
-  args: { name: string; slug: string; adminEmail: string; role?: AppRole; appOrigin: string; features?: Partial<Record<FeatureKey, boolean>> },
+  args: { name: string; slug: string; adminEmail: string; role?: AppRole; appOrigin: string; features?: Partial<Record<FeatureKey, boolean>>; orgKind?: OrgKind },
 ): Promise<string> {
   const { data, error } = await client.functions.invoke("provision-org", {
     body: {
@@ -229,6 +240,7 @@ export async function provisionOrg(
       role: args.role ?? "admin",
       app_origin: args.appOrigin,
       ...(args.features ? { entitlements: args.features } : {}),
+      ...(args.orgKind ? { org_kind: args.orgKind } : {}),
     },
   });
   if (error) throw error;

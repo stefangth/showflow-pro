@@ -150,6 +150,7 @@ export function useGetRunningV3(): { model: GetRunningModelV3 | null; isLoading:
     datesCitiesDone,
     datesCitiesUnknown,
     hasAnyDates: bookingOn ? booking.status.hasAnyDates : false,
+    orgKindChosen: currentOrg?.org_kind_set_at != null,
     producerCount,
     // An unreadable gaps query (e.g. an RLS misconfiguration on show_required_skills) must
     // not resolve to 0, which would render the step falsely done. Treat a persistent error

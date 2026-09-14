@@ -5,9 +5,13 @@ import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/features/auth/AuthContext";
 import { updateOrg, exportOrgData, deleteOrg, setOrgEntitlement, type OrgStat } from "@/data/platform";
+import { setOrgKind } from "@/data/orgs";
 import { fetchEntitlements } from "@/data/entitlements";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
+import type { OrgKind } from "@/lib/orgKind";
+import { OrgKindSelect } from "@/components/settings/OrgKindSelect";
 import { PermissionsMatrix } from "@/components/settings/permissions/PermissionsMatrix";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -27,6 +31,7 @@ type Values = z.infer<typeof schema>;
 
 export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const { refreshOrgs } = useAuth();
   const [busy, setBusy] = useState(false);
   const [confirmName, setConfirmName] = useState("");
   const [rightsOpen, setRightsOpen] = useState(false);
@@ -89,6 +94,16 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const kindMutation = useMutation({
+    mutationFn: (kind: OrgKind) => setOrgKind(supabase, org!.org_id, kind),
+    onSuccess: async () => {
+      qc.invalidateQueries({ queryKey: ["platform"] });
+      await refreshOrgs();
+      toast.success("Workspace type updated");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return (
     <Dialog open={!!org} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent>
@@ -103,6 +118,11 @@ export function EditOrgDialog({ org, onClose }: { org: OrgStat | null; onClose: 
             <Label htmlFor="e-slug">Slug</Label>
             <Input id="e-slug" {...form.register("slug")} />
             {form.formState.errors.slug && <p className="text-xs text-destructive">{form.formState.errors.slug.message}</p>}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="e-kind">Workspace type</Label>
+            <OrgKindSelect id="e-kind" value={org?.org_kind ?? "production"} onChange={(k) => kindMutation.mutate(k)} disabled={kindMutation.isPending} />
+            <p className="text-xs text-muted-foreground">Saves immediately. Changes the words the org sees, never its data.</p>
           </div>
           <DialogFooter><Button type="submit" disabled={mutation.isPending}>Save</Button></DialogFooter>
         </form>

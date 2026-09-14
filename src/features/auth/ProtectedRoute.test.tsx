@@ -41,7 +41,7 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-const ACTIVE_ORG = { id: "org-1", name: "Acme", slug: "acme", status: "active", is_demo: false };
+const ACTIVE_ORG = { id: "org-1", name: "Acme", slug: "acme", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 
 function renderProtected(
   {

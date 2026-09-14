@@ -15,6 +15,7 @@ import { Settings, LogOut, Bell, ChevronLeft, ChevronRight, Menu, EyeOff, User, 
 import { NAV_ITEMS, visibleNavItems, groupNavBySections, isHiddenForViewAs, type NavLabelKey } from '@/components/layout/navItems';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '@/features/i18n/LanguageContext';
+import { VocabularyBridge } from '@/features/i18n/VocabularyBridge';
 import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES, loadStoredLang } from '@/i18n/config';
 import i18n from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -335,6 +336,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
+      <VocabularyBridge />
       {/* Desktop sidebar */}
       <aside
         className={cn(

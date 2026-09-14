@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { ROUTES } from "@/config/app.config";
 import { fetchPlatformOrgStats, fetchAllOrgEntitlements, setOrgStatus, type OrgStat } from "@/data/platform";
 import { enabledFeatures, FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey, type EntitlementRow } from "@/lib/entitlements";
+import { ORG_KIND_LABELS } from "@/lib/orgKind";
 import { formatLastActivity } from "./platformFormat";
 import { NewOrgDialog } from "./NewOrgDialog";
 import { NewDemoOrgDialog } from "./NewDemoOrgDialog";
@@ -79,7 +80,7 @@ export function OrganizationsTab() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead><TableHead>Slug</TableHead><TableHead>Status</TableHead><TableHead>Modules</TableHead>
+            <TableHead>Name</TableHead><TableHead>Slug</TableHead><TableHead>Status</TableHead><TableHead>Type</TableHead><TableHead>Modules</TableHead>
             <TableHead numeric>Members</TableHead><TableHead numeric>Active artists</TableHead><TableHead numeric>Bookings 30d</TableHead>
             <TableHead>Last activity</TableHead><TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -95,6 +96,7 @@ export function OrganizationsTab() {
                   {o.is_demo && <Badge variant="outline" className="border-primary text-primary">DEMO</Badge>}
                 </div>
               </TableCell>
+              <TableCell className="text-muted-foreground">{ORG_KIND_LABELS[o.org_kind].en.title}</TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-1">
                   {[...enabledFeatures(entitlementsByOrg.get(o.org_id) ?? [])].map((feature) => (
@@ -141,7 +143,7 @@ export function OrganizationsTab() {
               </TableCell>
             </TableRow>
           ))}
-          {orgs?.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-6">No organizations yet</TableCell></TableRow>}
+          {orgs?.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-6">No organizations yet</TableCell></TableRow>}
         </TableBody>
       </Table>
       <EditOrgDialog org={editing} onClose={() => setEditing(null)} />

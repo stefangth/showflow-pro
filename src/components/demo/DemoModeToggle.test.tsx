@@ -18,7 +18,7 @@ vi.mock("@/hooks/useDemo", async (importOriginal) => {
   };
 });
 
-const DEMO_ORG = { id: "o", name: "n", slug: "s", status: "active", is_demo: true } as const;
+const DEMO_ORG = { id: "o", name: "n", slug: "s", status: "active", is_demo: true, org_kind: "production", org_kind_set_at: null } as const;
 
 describe("DemoModeToggle", () => {
   it("shows the DEMO chip for an admin inside a demo org", () => {
@@ -35,7 +35,7 @@ describe("DemoModeToggle", () => {
 
   it("renders nothing outside a demo org", () => {
     const { container } = render(<DemoModeToggle />, {
-      authOverrides: { currentOrg: { id: "o", name: "n", slug: "s", status: "active", is_demo: false } },
+      authOverrides: { currentOrg: { id: "o", name: "n", slug: "s", status: "active", is_demo: false, org_kind: "production", org_kind_set_at: null } },
     });
     expect(container).toBeEmptyDOMElement();
   });

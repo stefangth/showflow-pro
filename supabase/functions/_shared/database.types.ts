@@ -1780,6 +1780,8 @@ export type Database = {
           id: string
           is_demo: boolean
           name: string
+          org_kind: string
+          org_kind_set_at: string | null
           slug: string
           status: string
           updated_at: string
@@ -1790,6 +1792,8 @@ export type Database = {
           id?: string
           is_demo?: boolean
           name: string
+          org_kind?: string
+          org_kind_set_at?: string | null
           slug: string
           status?: string
           updated_at?: string
@@ -1800,6 +1804,8 @@ export type Database = {
           id?: string
           is_demo?: boolean
           name?: string
+          org_kind?: string
+          org_kind_set_at?: string | null
           slug?: string
           status?: string
           updated_at?: string
@@ -2619,6 +2625,7 @@ export type Database = {
         Args: { p_artist: string; p_dates: string[]; p_org: string }
         Returns: undefined
       }
+      backfill_getrunning_dates_source: { Args: never; Returns: number }
       backfill_show_slots_from_legacy: { Args: never; Returns: undefined }
       bulk_import_artists: {
         Args: { p_org: string; p_rows: Json }
@@ -2817,6 +2824,7 @@ export type Database = {
           member_count: number
           name: string
           org_id: string
+          org_kind: string
           slug: string
           status: string
         }[]
@@ -2838,6 +2846,7 @@ export type Database = {
         Args: {
           p_admin_email: string
           p_name: string
+          p_org_kind?: string
           p_role?: Database["public"]["Enums"]["app_role"]
           p_slug: string
         }
@@ -2894,6 +2903,10 @@ export type Database = {
       seed_org_starter_catalog: { Args: { _org: string }; Returns: undefined }
       set_org_airtable_key: {
         Args: { _key: string; _org: string }
+        Returns: undefined
+      }
+      set_org_kind: {
+        Args: { p_kind: string; p_org: string }
         Returns: undefined
       }
       set_org_member_role: {
@@ -2957,12 +2970,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2986,11 +2999,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3011,11 +3024,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3036,11 +3049,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3053,11 +3066,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

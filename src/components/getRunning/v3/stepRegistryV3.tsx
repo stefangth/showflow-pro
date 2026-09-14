@@ -8,6 +8,7 @@ import { TeamPanelBody } from "@/components/getRunning/panels/TeamPanelBody";
 import { LetterheadStep } from "@/components/hireOrders/setup/LetterheadStep";
 import { TermsStep } from "@/components/hireOrders/setup/TermsStep";
 import { CountersignStep } from "@/components/hireOrders/setup/CountersignStep";
+import { WorkspaceStep } from "@/components/getRunning/v3/steps/WorkspaceStep";
 import { SourceStep } from "@/components/getRunning/v3/steps/SourceStep";
 import { ConnectStep } from "@/components/getRunning/v3/steps/ConnectStep";
 import { MapStep } from "@/components/getRunning/v3/steps/MapStep";
@@ -31,7 +32,7 @@ const BOOKING_DOMAIN_STEP_KEYS: ReadonlySet<GetRunningStepKey> = new Set(["artis
  * Mounts the existing step editor for a `GetRunningStep` inside the v3 `WizardShell`'s
  * middle scroll slot (Task 6). Reuses the same in-panel editors v1's `taskPanelRegistry`
  * wires up (see that file's header comment for the "in-panel editors" initiative this
- * built on) — nothing here re-implements a body, it only re-maps v3's 16-step model onto
+ * built on) — nothing here re-implements a body, it only re-maps v3's 17-step model onto
  * them. `coverage` is v3's one genuinely new mapping: the merged step (v3 retires
  * v1's separate `ladder`/`eligibility` steps) renders BOTH `LadderPanelBody` (org-wide
  * per-city ranking) and `EligibilityPanelBody` (per-show override) stacked, sharing the
@@ -40,8 +41,8 @@ const BOOKING_DOMAIN_STEP_KEYS: ReadonlySet<GetRunningStepKey> = new Set(["artis
  *
  * The five "Get dates in" steps (`source`/`connect`/`map`/`cities`/`productions`) have
  * real bodies too (Wireflow v3 Phase 2, Tasks 6-9/11), each owning its own data via the
- * `orgId`/`onDone` props passed straight through. As of Phase 3 (Task 6) all 16 steps
- * have a real in-panel editor: `skills` reuses the Settings `SkillsTab`, `fee` reuses
+ * `orgId`/`onDone` props passed straight through. As of Phase 3 (Task 6) all steps then
+ * modeled have a real in-panel editor: `skills` reuses the Settings `SkillsTab`, `fee` reuses
  * `OrderDefaultsCard`, and `document` reuses `NumberingCard`. The `step.placeholder`
  * early-return and `StepComingSoon` below are now dead for every currently-modeled step,
  * but stay in place as the generic safety net for any future step added with
@@ -108,6 +109,8 @@ export function StepBodyV3({
       return <TermsStep orgId={orgId} onDone={onDone} />;
     case "countersign":
       return <CountersignStep orgId={orgId} onDone={onDone} />;
+    case "workspace":
+      return <WorkspaceStep orgId={orgId} onDone={onDone} />;
     case "source":
       return <SourceStep orgId={orgId} onDone={onDone} />;
     case "connect":

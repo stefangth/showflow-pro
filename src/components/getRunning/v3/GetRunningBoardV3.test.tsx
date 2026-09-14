@@ -38,7 +38,7 @@ import { toast } from "sonner";
 import { useGetRunningV3 } from "@/hooks/useGetRunningV3";
 import { GetRunningBoardV3 } from "./GetRunningBoardV3";
 
-const TEST_ORG = { id: "org-1", name: "Nordstadt Produktionen", slug: "nordstadt", status: "active", is_demo: false };
+const TEST_ORG = { id: "org-1", name: "Nordstadt Produktionen", slug: "nordstadt", status: "active", is_demo: false, org_kind: "production" as const, org_kind_set_at: null };
 
 // Minimal booking/hire fixture builders, mirroring board.test.tsx's own helpers so this
 // suite composes its models through the same real composer rather than a hand-rolled
@@ -70,6 +70,7 @@ const base: GetRunningInputV3 = {
   datesMapDone: true,
   datesCitiesDone: true,
   hasAnyDates: true,
+  orgKindChosen: true,
   producerCount: 1,
   skillGaps: 0,
   feeDone: false,

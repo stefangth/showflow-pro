@@ -26,6 +26,7 @@ import { OrganizationsTab } from "./OrganizationsTab";
 const ORG_STAT = (org_id: string, name: string, slug: string) => ({
   org_id, name, slug, status: "active",
   member_count: 1, active_artist_count: 1, bookings_30d: 0, last_activity_at: null,
+  is_demo: false, org_kind: "production" as const,
 });
 
 const wrap = (ui: React.ReactNode) => renderWithProviders(<MemoryRouter>{ui}</MemoryRouter>);
@@ -57,6 +58,22 @@ describe("OrganizationsTab module chips", () => {
     const betaRow = screen.getByText("Beta").closest("tr")!;
     expect(within(betaRow).getByText("BF")).toBeInTheDocument();
     expect(within(betaRow).queryByText("HO")).not.toBeInTheDocument();
+  });
+
+  it("shows the workspace type in a Type column", async () => {
+    fetchPlatformOrgStatsSpy.mockResolvedValue([
+      { ...ORG_STAT("o1", "Acme", "acme"), org_kind: "production" as const },
+      { ...ORG_STAT("o2", "Beta", "beta"), org_kind: "staffing" as const },
+    ]);
+    fetchAllOrgEntitlementsSpy.mockResolvedValue([]);
+    wrap(<OrganizationsTab />);
+    await waitFor(() => expect(screen.getByText("Acme")).toBeInTheDocument());
+
+    const acmeRow = screen.getByText("Acme").closest("tr")!;
+    expect(within(acmeRow).getByText("Live production")).toBeInTheDocument();
+
+    const betaRow = screen.getByText("Beta").closest("tr")!;
+    expect(within(betaRow).getByText("Staffing agency")).toBeInTheDocument();
   });
 
   it("ignores an unknown feature row instead of crashing the render", async () => {
