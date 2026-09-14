@@ -23,6 +23,17 @@ const strictness = {
   "@typescript-eslint/no-explicit-any": "error",
 };
 
+// eslint-plugin-react-hooks v7 expands its `recommended` preset to the full
+// React Compiler rule family (react-hooks/refs, set-state-in-effect,
+// immutability, purity, ...). Adopting those is a deliberate lint-policy change
+// that would require a codebase-wide sweep, so it belongs in its own PR — not in
+// this eslint 9 -> 10 dependency bump. We pin the exact two rules the plugin's
+// v5 `recommended` enforced, keeping the zero-warning gate's coverage unchanged.
+const reactHooksRules = {
+  "react-hooks/rules-of-hooks": "error",
+  "react-hooks/exhaustive-deps": "warn",
+};
+
 export default tseslint.config(
   // Build output and the v8 coverage HTML report (both gitignored — ESLint does
   // not read .gitignore). `npm run test:coverage` writes coverage/, whose vendored
@@ -40,7 +51,7 @@ export default tseslint.config(
     languageOptions: { ecmaVersion: 2020, globals: globals.browser },
     plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      ...reactHooksRules,
       "react-refresh/only-export-components": ["error", { allowConstantExport: true }],
       ...strictness,
     },
@@ -79,9 +90,15 @@ export default tseslint.config(
     languageOptions: { ecmaVersion: 2020, globals: { Deno: "readonly" } },
     plugins: { "react-hooks": reactHooks },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      ...reactHooksRules,
       ...strictness,
     },
   },
+  // eslint 10 promotes `no-useless-assignment` into `js.configs.recommended`.
+  // The few sites it flags are deliberate default-init-then-overwrite idioms
+  // (documented in place). Turning the newly-added core rule on across the app
+  // is a separate policy decision, so keep it off here to preserve the prior
+  // enforced rule set through the eslint 9 -> 10 bump.
+  { rules: { "no-useless-assignment": "off" } },
   uiConventions,
 );
