@@ -4,6 +4,7 @@ import {
   applyTokens,
   HIRE_ORDER_COPY_DE,
   HIRE_ORDER_COPY_DEFAULTS,
+  PRODUCTION_VOCAB,
   resolveHireOrderCopy,
   type CopyKey,
 } from "./pdfCopy";
@@ -63,5 +64,14 @@ describe("resolveHireOrderCopy org_kind vocabulary", () => {
     );
     // Production keeps the word.
     expect(resolveHireOrderCopy(overrides, "en").terms_heading).toBe("Cast terms");
+  });
+});
+
+// PRODUCTION_VOCAB is a hand-maintained, import-free copy of VOCABULARY.production
+// (the pdfCopy mirror must import nothing). Guard against silent desync from the registry.
+describe("PRODUCTION_VOCAB stays in sync with the org_kind registry", () => {
+  it("matches VOCABULARY.production for en and de", () => {
+    expect(PRODUCTION_VOCAB.en).toEqual(VOCABULARY.production.en);
+    expect(PRODUCTION_VOCAB.de).toEqual(VOCABULARY.production.de);
   });
 });

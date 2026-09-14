@@ -250,7 +250,7 @@ function substituteVocabulary(text: string, vocab: Record<string, string>): stri
  *  VOCABULARY.production in src/lib/orgKind.ts, which is exactly what keeps a plain
  *  resolveHireOrderCopy(...) byte-identical to the pre-variable prose. Import-free by the
  *  mirror rule above. */
-const PRODUCTION_VOCAB: Record<"en" | "de", Record<string, string>> = {
+export const PRODUCTION_VOCAB: Record<"en" | "de", Record<string, string>> = {
   en: {
     show: "show", shows: "shows", Show: "Show", Shows: "Shows",
     showDate: "date", showDates: "dates", ShowDate: "Date", ShowDates: "Dates",

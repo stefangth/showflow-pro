@@ -644,7 +644,7 @@ function substituteVocabulary(text: string, vocab: Record<string, string>): stri
  *  VOCABULARY.production in src/lib/orgKind.ts, which is exactly what keeps a plain
  *  resolveEmailCopy(...) byte-identical to the pre-variable prose. Import-free by the
  *  mirror rule above. */
-const PRODUCTION_VOCAB: Record<EmailLocale, Record<string, string>> = {
+export const PRODUCTION_VOCAB: Record<EmailLocale, Record<string, string>> = {
   en: {
     show: "show", shows: "shows", Show: "Show", Shows: "Shows",
     showDate: "date", showDates: "dates", ShowDate: "Date", ShowDates: "Dates",
@@ -701,6 +701,12 @@ const EMAIL_COPY_VOCAB_TEMPLATES: Record<EmailLocale, Partial<Record<EmailCopyKe
     "org-invitation.roleIntroProducer": "You plan {{productions}} and show dates, and book {{artists}} into them.",
     "org-invitation.roleIntroArtist": "You are on the roster. You get booked for {{productions}} and can see every confirmed engagement.",
     "airtable-sync-held.topReasonUnlinkedProgram": "not linked to one of your {{productions}}",
+    // The show/production field label in booking emails. {{Production}} is production
+    // ("Production", byte-identical) and staffing ("Client"). No article, safe both langs.
+    "offer-immediate.showLabel": "{{Production}}",
+    "artist-offer-digest.showLabel": "{{Production}}",
+    "artist-confirmation-digest.showLabel": "{{Production}}",
+    "cast-escalation-requested.showLabel": "{{Production}}",
   },
   de: {
     "offer-immediate.intro": "Du wurdest zu {{referenceLabel}} am {{where}} gefragt. Sag ja, und der {{showDate}} ist für Dich reserviert. Sag nein, und das wird Dir nicht angerechnet und wirkt sich auf keinen anderen {{showDate}} aus. Antworte innerhalb von {{hours}} Stunden.",
@@ -721,6 +727,12 @@ const EMAIL_COPY_VOCAB_TEMPLATES: Record<EmailLocale, Partial<Record<EmailCopyKe
     "org-invitation.roleIntroProducer": "Du planst {{productions}} und Show-Termine und buchst {{artists}} dafür.",
     "org-invitation.roleIntroArtist": "Du stehst auf der Liste. Du wirst für {{productions}} gebucht und siehst jedes bestätigte Engagement.",
     "airtable-sync-held.topReasonUnlinkedProgram": "nicht mit einer Deiner {{productions}} verknüpft",
+    // Show/production field label. {{Production}} is production ("Produktion",
+    // byte-identical) and staffing ("Kunde"). No article, safe both langs.
+    "offer-immediate.showLabel": "{{Production}}",
+    "artist-offer-digest.showLabel": "{{Production}}",
+    "artist-confirmation-digest.showLabel": "{{Production}}",
+    "cast-escalation-requested.showLabel": "{{Production}}",
   },
 };
 
