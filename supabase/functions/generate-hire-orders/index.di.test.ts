@@ -5769,3 +5769,203 @@ Deno.test("sign: a de, entitled order countersigns in German (PDF + artist email
     expectedDe,
   );
 });
+
+// ── workspace type (org_kind) vocabulary at issue and preview ─────────────────
+
+Deno.test("issue: a staffing org renders and freezes staffing vocabulary in the copy", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      organizations: { data: { org_kind: "staffing" } },
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { copy?: Record<string, string> } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  // The RENDER gets the staffing wording. The runtime {{castRef}} token is still
+  // unfilled at this layer (applyTokens runs inside the real renderer), so assert
+  // on the leading substituted prose only.
+  assert(
+    captured!.copy?.party_cast_reference?.startsWith("Team reference:"),
+    `expected staffing "Team reference:", got ${captured!.copy?.party_cast_reference}`,
+  );
+  // And the substituted copy is FROZEN into issue_snapshot.copy.
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" &&
+      (c.args[0] as { status?: string }).status === "issued",
+  );
+  assert(issuedUpdate, "expected the issued update");
+  const snap = (issuedUpdate!.args[0] as { issue_snapshot?: { copy?: Record<string, string> } }).issue_snapshot;
+  assert(
+    snap?.copy?.party_cast_reference?.startsWith("Team reference:"),
+    `issue_snapshot.copy must carry the staffing strings, got ${snap?.copy?.party_cast_reference}`,
+  );
+});
+
+Deno.test("issue: a production org freezes byte-identical copy (org_kind control)", async () => {
+  const { deps, calls } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      organizations: { data: { org_kind: "production" } },
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { copy?: Record<string, string> } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  // Byte-identical to pre-org_kind: the production vocabulary equals the literals.
+  assertEquals(captured!.copy?.party_cast_reference, "Cast reference: {{castRef}}");
+  const issuedUpdate = calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" &&
+      (c.args[0] as { status?: string }).status === "issued",
+  );
+  const snap = (issuedUpdate!.args[0] as { issue_snapshot?: { copy?: Record<string, string> } }).issue_snapshot;
+  assertEquals(snap?.copy?.party_cast_reference, "Cast reference: {{castRef}}");
+});
+
+Deno.test("preview: a staffing org renders staffing vocabulary (live kind)", async () => {
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      organizations: { data: { org_kind: "staffing" } },
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: { data: issuableOrder() },
+      app_settings: [
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { copy?: Record<string, string> } | null = null;
+  deps.renderHireOrderPdf = (a) => {
+    captured = a as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: JWT, body: { action: "preview", org_id: ORG, order_id: "o-1" } }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assert(
+    captured!.copy?.party_cast_reference?.startsWith("Team reference:"),
+    `expected staffing preview "Team reference:", got ${captured!.copy?.party_cast_reference}`,
+  );
+});
+
+Deno.test("snapshot re-render keeps the frozen staffing copy (no re-substitution)", async () => {
+  // Phase 1: issue under a staffing org and capture the frozen snapshot.
+  const issue = makeFakeDeps({
+    authUser: { id: "u-admin" },
+    tables: {
+      organizations: { data: { org_kind: "staffing" } },
+      org_memberships: { data: { role: "admin" } },
+      hire_orders: [
+        { when: { __write: false }, data: issuableOrder() },
+        { when: { __write: true }, data: null },
+      ],
+      artists: { data: { user_id: "u-artist" } },
+      app_settings: [
+        // Freeze electronic so the snapshot supports the sign re-render below.
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  issue.deps.renderHireOrderPdf = () => Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  const issueRes = await handle(
+    makeRequest({ headers: JWT, body: { action: "issue", org_id: ORG, order_ids: ["o-1"] } }),
+    issue.deps,
+  );
+  assertEquals(issueRes.status, 200);
+  const issuedUpdate = issue.calls.find(
+    (c) => c.table === "hire_orders" && c.method === "update" &&
+      (c.args[0] as { status?: string }).status === "issued",
+  );
+  const frozen = (issuedUpdate!.args[0] as {
+    issue_snapshot?: {
+      copy?: Record<string, string>;
+      letterhead?: unknown;
+      terms?: unknown;
+      currency?: string;
+    };
+  }).issue_snapshot!;
+  assert(
+    frozen.copy?.party_cast_reference?.startsWith("Team reference:"),
+    "issue must freeze staffing copy",
+  );
+
+  // Phase 2: re-render from that snapshot via the sign path. The org is NOT seeded
+  // as staffing here, so if the re-render re-substituted from the live kind it would
+  // revert to production ("Cast reference:"). The frozen wording must survive.
+  const snapshotOrder = { ...SIGN_ORDER, issue_snapshot: frozen };
+  const { deps } = makeFakeDeps({
+    authUser: { id: "u-artist" },
+    rpcs: { is_feature_enabled: { data: true, error: null } },
+    tables: {
+      hire_orders: [
+        { when: { __write: false }, data: snapshotOrder },
+        { when: { __write: true }, data: [{ id: "o-1" }] },
+      ],
+      artists: { data: { id: "a-A" } },
+      org_memberships: { data: [] },
+      app_settings: [
+        { when: { key: "hire_order_countersign" }, data: [{ org_id: ORG, value: { mode: "electronic" } }] },
+        { when: { key: "hire_order_letterhead" }, data: [LETTERHEAD] },
+        { when: { key: "hire_order_terms" }, data: [TERMS_FILLED] },
+        { when: { key: "hire_order_defaults" }, data: [DEFAULTS] },
+      ],
+    },
+  });
+  let captured: { copy?: Record<string, string> } | null = null;
+  deps.renderHireOrderPdf = (input) => {
+    captured = input as unknown as typeof captured;
+    return Promise.resolve(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+  };
+  const res = await handle(
+    makeRequest({ headers: { Authorization: "Bearer artist" }, body: SIGN_BODY }),
+    deps,
+  );
+  assertEquals(res.status, 200);
+  assert(
+    captured!.copy?.party_cast_reference?.startsWith("Team reference:"),
+    `re-render must stay frozen on staffing, got ${captured!.copy?.party_cast_reference}`,
+  );
+});
