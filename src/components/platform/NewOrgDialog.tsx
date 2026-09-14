@@ -9,6 +9,7 @@ import { provisionOrg } from "@/data/platform";
 import { slugify } from "./platformFormat";
 import { FEATURE_KEYS, FEATURE_REGISTRY, type FeatureKey } from "@/lib/entitlements";
 import { OrgKindSelect } from "@/components/settings/OrgKindSelect";
+import { ORG_KINDS, type OrgKind } from "@/lib/orgKind";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ const schema = z.object({
   slug: z.string().min(1, "Required").regex(/^[a-z0-9-]+$/, "lowercase letters, numbers, hyphens"),
   adminEmail: z.string().email("Valid email required"),
   role: z.enum(["admin", "producer", "artist"]),
-  orgKind: z.enum(["production", "staffing"]),
+  orgKind: z.enum(ORG_KINDS as unknown as [OrgKind, ...OrgKind[]]),
   features: z.record(z.string(), z.boolean()),
 });
 type FormValues = z.infer<typeof schema>;

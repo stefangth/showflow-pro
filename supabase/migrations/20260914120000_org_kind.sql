@@ -15,6 +15,12 @@ comment on column public.organizations.org_kind is
 comment on column public.organizations.org_kind_set_at is
   'When an admin or super-admin explicitly chose the kind. NULL means still on the default; the Get running step reads this.';
 
+-- Backfill existing orgs as "already decided". They have been running as production, so
+-- their Get running workspace step must count as done: otherwise this migration would flip
+-- model.complete back to false for every already-configured org and reopen the setup board.
+-- Only rows present at migration time are stamped; future inserts default to NULL (undecided).
+update public.organizations set org_kind_set_at = now() where org_kind_set_at is null;
+
 -- 2. set_org_kind: org admin (super-admins pass via has_org_role) sets the kind.
 --    No admin UPDATE policy is opened on organizations; this RPC is the only admin write path.
 create or replace function public.set_org_kind(p_org uuid, p_kind text)
