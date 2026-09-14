@@ -67,6 +67,7 @@ import {
 } from "../_shared/hireOrders.ts";
 import { type HireOrderCopy, resolveHireOrderCopy } from "../_shared/hire-order-pdf/pdfCopy.ts";
 import { resolveOrgLocale, type ServerLocale } from "../_shared/orgLocale.ts";
+import { resolveOrgKind, VOCABULARY } from "../_shared/orgKind.ts";
 import {
   SAMPLE_ORDER_NO,
   sampleOrderData,
@@ -1888,7 +1889,12 @@ async function issueOrders(
   // per order into issue_snapshot.locale so a later language/entitlement change
   // never alters an already-issued document's re-render.
   const locale = await resolveOrgLocale(admin, org);
-  const copy = resolveHireOrderCopy(copyOverride, locale);
+  // Resolve the org's workspace type ONCE for the batch and substitute its
+  // vocabulary into the copy; the substituted strings then freeze into
+  // issue_snapshot.copy below, so a later org_kind change never alters an
+  // already-issued document's re-render.
+  const kind = await resolveOrgKind(admin, org);
+  const copy = resolveHireOrderCopy(copyOverride, locale, VOCABULARY[kind][locale]);
   // Resolve the org's editable PDF theme ONCE for the whole batch (frozen per order
   // into issue_snapshot.theme below), same shape as copy above.
   const themeOverride = await resolveOrgSetting<HireOrderThemeOverride>(
@@ -2449,9 +2455,11 @@ async function previewOrder(deps: Deps, body: PreviewBody): Promise<Response> {
     ),
   ]);
   // Preview reflects the org's CURRENT language (live, entitlement-gated), unlike
-  // issue/countersign which use the frozen snapshot locale.
+  // issue/countersign which use the frozen snapshot locale. Same for workspace
+  // type: preview uses the live kind so an admin sees today's vocabulary.
   const locale = await resolveOrgLocale(admin, org);
-  const copy = resolveHireOrderCopy({ ...storedCopy, ...(body.copy_override ?? {}) }, locale);
+  const kind = await resolveOrgKind(admin, org);
+  const copy = resolveHireOrderCopy({ ...storedCopy, ...(body.copy_override ?? {}) }, locale, VOCABULARY[kind][locale]);
   const theme = resolveHireOrderTheme(layerThemeOverride(storedTheme, body.theme_override));
   const termsSetting = normalizeTermsSetting(rawTerms);
 
@@ -2783,6 +2791,10 @@ async function signOrder(
     // Reproduce the issued wording. snapshot.copy is a full record for part-E
     // orders and undefined for legacy ones; resolveHireOrderCopy fills any gaps
     // from the current defaults either way.
+    // NO vocab argument on purpose: the snapshot copy was already vocabulary-
+    // substituted at issue time (workspace-type words freeze there). Threading a
+    // table here would double-substitute already-swapped words; copy freezes at
+    // issue, so re-render must not substitute again.
     renderCopy = resolveHireOrderCopy(snapshot.copy);
     // Reproduce the issued typography/colour. snapshot.theme is a full resolved
     // theme for orders issued after this change and undefined for older ones;
@@ -2808,6 +2820,9 @@ async function signOrder(
       "hire_order_copy",
       COPY_DEFAULT,
     );
+    // NO vocab argument on purpose (legacy no-snapshot path): re-render must not
+    // vocabulary-substitute. A legacy order predates workspace type, so it stays
+    // on the production words; copy freezes at issue and is never re-substituted.
     renderCopy = resolveHireOrderCopy(storedCopy);
     renderLocale = "en";
     const storedTheme = await resolveOrgSetting<HireOrderThemeOverride>(
