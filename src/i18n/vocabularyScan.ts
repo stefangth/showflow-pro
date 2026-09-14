@@ -6,8 +6,10 @@ import { VOCABULARY } from "@/lib/orgKind";
 
 export interface VocabHit { path: string; text: string; count: number }
 
-/** Bare domain nouns that must be vocabulary variables. Case-insensitive. */
-export const NOUN = /\b(shows?|artists?|productions?|casts?|understud(?:y|ies)|hire orders?)\b/gi;
+/** Bare domain nouns that must be vocabulary variables. Case-insensitive.
+ *  "contract(s)" is in here because it is the production value of `{{hireOrder}}`: a staffing
+ *  org must read "work order", so a literal "contract" in copy is a missed substitution. */
+export const NOUN = /\b(shows?|artists?|productions?|casts?|understud(?:y|ies)|hire orders?|contracts?)\b/gi;
 
 // Removed before counting: the brand, interpolation variables, and nested-key references.
 const IGNORE = [/ShowFlow/g, /\{\{[^}]*\}\}/g, /\$t\([^)]*\)/g];

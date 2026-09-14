@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { resources } from './index';
+import { VOCABULARY } from '@/lib/orgKind';
 
 /** Flatten a nested catalog to { 'dotted.key': stringValue } leaves. */
 function leaves(obj: unknown, prefix = '', out: Record<string, string> = {}): Record<string, string> {
@@ -165,9 +166,24 @@ describe('German catalog is translated (not English left in place)', () => {
   }
 });
 
-/** The `{{name}}` interpolation tokens in a value, sorted for order-independent comparison. */
+const VOCAB = new Set(Object.keys(VOCABULARY.production.en));
+
+/** The `{{name}}` interpolation tokens in a value, sorted for order-independent comparison.
+ *  Vocabulary variables (and the `kind` selector, which is one of them) are dropped: German
+ *  may resolve a noun through a per-kind sibling whose text spells the noun out, so the two
+ *  languages legitimately carry different vocabulary tokens. Only runtime data placeholders
+ *  ({{count}}, {{org}}, ...) have to match. */
 function placeholders(value: string): string[] {
-  return [...value.matchAll(/\{\{\s*(\w+)[^}]*\}\}/g)].map((m) => m[1]).sort();
+  return [...value.matchAll(/\{\{\s*(\w+)[^}]*\}\}/g)].map((m) => m[1]).filter((n) => !VOCAB.has(n)).sort();
+}
+
+/** The German per-kind sibling keys of an English key: `_production` / `_staffing` inserted
+ *  before any `_one` / `_other` plural suffix (see keyParity.test.ts for the shape). */
+function siblingKeys(key: string): string[] {
+  const m = key.match(/_(one|other)$/);
+  const base = m ? key.slice(0, -m[0].length) : key;
+  const plural = m ? m[0] : '';
+  return [`${base}_production${plural}`, `${base}_staffing${plural}`];
 }
 
 // keyParity guards key shape, copyLint guards dashes/formal address, and the block above
@@ -180,9 +196,15 @@ describe('German values preserve English interpolation placeholders', () => {
     it(`de keeps every {{placeholder}} from en in namespace "${ns}"`, () => {
       const en = leaves(resources.en[ns]);
       const de = leaves(resources.de[ns]);
-      const mismatched = Object.keys(en).filter(
-        (k) => de[k] !== undefined && placeholders(en[k]).join(',') !== placeholders(de[k]).join(','),
-      );
+      const mismatched = Object.keys(en).filter((k) => {
+        if (de[k] === undefined) return false;
+        // A German value that is a `$t(...)` nesting reference carries no text of its own;
+        // its placeholders live in the per-kind siblings, so check those instead.
+        const siblings = de[k].startsWith('$t(') ? siblingKeys(k).filter((s) => de[s] !== undefined) : [];
+        const values = siblings.length > 0 ? siblings.map((s) => de[s]) : [de[k]];
+        const expected = placeholders(en[k]).join(',');
+        return values.some((v) => placeholders(v).join(',') !== expected);
+      });
       expect(
         mismatched,
         `de placeholders differ from en: ${mismatched.join(', ')}`,

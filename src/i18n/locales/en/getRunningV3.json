@@ -18,7 +18,7 @@
   "stillShut": {
     "title": "What is still shut",
     "firstAsk": "Your first ask is shut until this is done.",
-    "firstContract": "Your first contract is shut until this is done.",
+    "firstContract": "Your first {{hireOrder}} is shut until this is done.",
     "nothingElse": "Nothing else here is shut.",
     "open": "Open",
     "stepsAway_one": "{{count}} step away",
@@ -40,7 +40,7 @@
     },
     "paperwork": {
       "name": "Paperwork",
-      "summary": "Set up letterhead, fee, terms and countersignature before the first contract goes out."
+      "summary": "Set up letterhead, fee, terms and countersignature before the first {{hireOrder}} goes out."
     }
   },
   "phaseRow": {
@@ -119,22 +119,22 @@
     },
     "letterhead": {
       "title": "Set your letterhead",
-      "hint": "Your name, address and logo on every contract."
+      "hint": "Your name, address and logo on every {{hireOrder}}."
     },
     "fee": {
       "title": "Set your default fee",
-      "hint": "The fee that appears on a new contract by default."
+      "hint": "The fee that appears on a new {{hireOrder}} by default."
     },
     "terms": {
       "title": "Write your terms",
       "hint": "ShowFlow ships no default clauses. Yours to author."
     },
     "document": {
-      "title": "Style your contract document",
-      "hint": "Choose the layout that goes out on every contract."
+      "title": "Style your {{hireOrder}} document",
+      "hint": "Choose the layout that goes out on every {{hireOrder}}."
     },
     "countersign": {
-      "title": "Choose how contracts get signed",
+      "title": "Choose how {{hireOrders}} get signed",
       "hint": "The {{artist}}'s signing route."
     }
   },
@@ -151,7 +151,7 @@
     },
     "source": {
       "title": "Choose where your dates come from",
-      "body": "Every downstream step reads from your dates: casting breakdown, priorities and who can be asked. Pick the source that fits how your team already works.",
+      "body": "Every downstream step reads from your dates: parts breakdown, priorities and who can be asked. Pick the source that fits how your team already works.",
       "points": [
         "Airtable sync brings {{productions}} and dates in automatically, hourly.",
         "Adding by hand works too, and you can mix both.",
@@ -197,7 +197,7 @@
       "title": "Review your {{productions}}",
       "body": "Your {{productions}} are the work you book {{artists}} against. Check the ones that came in and add any that are missing.",
       "points": [
-        "Each {{production}} needs its casting breakdown set.",
+        "Each {{production}} needs its parts breakdown set.",
         "You can edit any {{production}}'s details at any time.",
         "New dates attach to an existing {{production}} or a new one."
       ],
@@ -215,7 +215,7 @@
     },
     "skills": {
       "title": "Set skills on your {{artists}}",
-      "body": "Skills tell the booking engine which {{artists}} match which part in the casting breakdown.",
+      "body": "Skills tell the booking engine which {{artists}} match which part in your breakdown.",
       "points": [
         "A part with no matching skill has nobody eligible.",
         "You can set skills for several {{artists}} at once.",
@@ -258,16 +258,16 @@
       "body": "{{roleProducer}} plans dates, runs asks and books the {{cast}}. Booking can stay with you if you prefer.",
       "points": [
         "People invited to {{roleProducer}} get an email invite.",
-        "You can remove someone's access to {{roleProducer}} at any time.",
+        "You can revoke access for anyone on {{roleProducer}} at any time.",
         "{{roleProducer}} sees only the dates in their org."
       ],
       "article": "Read more about your team"
     },
     "letterhead": {
       "title": "Set your letterhead",
-      "body": "Your name, address and logo appear on every contract you issue.",
+      "body": "Your name, address and logo appear on every {{hireOrder}} you issue.",
       "points": [
-        "Used on every contract, no exceptions.",
+        "Used on every {{hireOrder}}, no exceptions.",
         "Update it any time from Settings.",
         "A missing letterhead blocks issuing."
       ],
@@ -275,17 +275,17 @@
     },
     "fee": {
       "title": "Set your default fee",
-      "body": "The fee that appears on a new contract by default, before any adjustment for a specific booking.",
+      "body": "The fee that appears on a new {{hireOrder}} by default, before any adjustment for a specific booking.",
       "points": [
-        "Saves time on every contract you draft.",
-        "You can still adjust the fee per contract.",
-        "Changing this default does not touch issued contracts."
+        "Saves time on every {{hireOrder}} you draft.",
+        "You can still adjust the fee per {{hireOrder}}.",
+        "Changing this default does not touch issued {{hireOrders}}."
       ],
       "article": "Read more about fees"
     },
     "terms": {
       "title": "Write your terms",
-      "body": "ShowFlow ships no default clauses. The terms you write here go out on every contract.",
+      "body": "ShowFlow ships no default clauses. The terms you write here go out on every {{hireOrder}}.",
       "points": [
         "Write your own clauses, or paste in an existing template.",
         "You can keep more than one terms variant.",
@@ -294,22 +294,22 @@
       "article": "Read more about terms"
     },
     "document": {
-      "title": "Style your contract document",
-      "body": "Choose the layout and styling that goes out on every contract you issue.",
+      "title": "Style your {{hireOrder}} document",
+      "body": "Choose the layout and styling that goes out on every {{hireOrder}} you issue.",
       "points": [
         "Preview the document before you issue anything.",
-        "Styling applies to every future contract.",
-        "Past contracts keep the styling they were issued with."
+        "Styling applies to every future {{hireOrder}}.",
+        "Past {{hireOrders}} keep the styling they were issued with."
       ],
-      "article": "Read more about the contract document"
+      "article": "Read more about the {{hireOrder}} document"
     },
     "countersign": {
-      "title": "Choose how contracts get signed",
-      "body": "Choose how the {{artist}} signs an issued contract: in ShowFlow, or somewhere else.",
+      "title": "Choose how {{hireOrders}} get signed",
+      "body": "Choose how the {{artist}} signs an issued {{hireOrder}}: in ShowFlow, or somewhere else.",
       "points": [
-        "In ShowFlow, the {{artist}} signs in the app and the signature is stored with the contract.",
-        "Outside ShowFlow, someone on {{roleProducer}} marks the contract countersigned once the {{artist}} has signed elsewhere.",
-        "Either way you can issue contracts. Change the choice at any time, and it applies from then on."
+        "In ShowFlow, the {{artist}} signs in the app and the signature is stored with the {{hireOrder}}.",
+        "Outside ShowFlow, someone on {{roleProducer}} marks the {{hireOrder}} countersigned once the {{artist}} has signed elsewhere.",
+        "Either way you can issue {{hireOrders}}. Change the choice at any time, and it applies from then on."
       ],
       "article": "Read more about signing"
     }
@@ -410,8 +410,8 @@
       "heading": "Map your fields",
       "sub": "Match each Airtable column to the ShowFlow field it represents.",
       "slotsFold": {
-        "title": "Casting breakdown",
-        "body": "Each imported {{production}} still needs its casting breakdown, the parts and people per part. Set it on the {{Productions}} step.",
+        "title": "Parts breakdown",
+        "body": "Each imported {{production}} still needs its parts breakdown, the parts and people per part. Set it on the {{Productions}} step.",
         "link": "Go to {{Productions}}"
       },
       "continue": "Continue",
@@ -421,7 +421,7 @@
         "sub": "Match each column in your sheet to the field it represents.",
         "fields": {
           "program": "{{Production}}",
-          "subProgram": "Sub-{{production}}",
+          "subProgram": "Sub-production",
           "date": "Date",
           "city": "City",
           "session1": "Session 1",
@@ -470,22 +470,22 @@
       }
     },
     "parts": {
-      "title": "Casting breakdown for {{name}}",
+      "title": "Parts breakdown for {{name}}",
       "save": "Save",
-      "savedToast": "Casting breakdown saved"
+      "savedToast": "Parts breakdown saved"
     },
     "productions": {
       "heading": "Review your {{productions}}",
       "sub": "Check the {{productions}} that came in, and add any that are missing.",
       "addProduction": "Add a new {{production}}",
       "addDate": "Add a date",
-      "setParts": "Set casting breakdown",
+      "setParts": "Set parts breakdown",
       "unconfigured": "Unconfigured",
       "parts": "{{main}} main + {{understudyCount}} {{understudies}}",
       "dateCount_one": "{{count}} date",
       "dateCount_other": "{{count}} dates",
       "continue": "Continue",
-      "incomplete": "Set at least one casting breakdown to continue.",
+      "incomplete": "Set at least one parts breakdown to continue.",
       "empty": "No {{productions}} yet. Add your first one to get started.",
       "readOnlyEmpty": "No {{productions}} yet. Ask an admin to add one.",
       "readOnlyReason": "Adding a new {{production}} needs the manage {{productions}} right, which this account does not have.",
@@ -494,7 +494,7 @@
     },
     "fee": {
       "heading": "Set your default fee",
-      "sub": "The fee a new contract starts from. You can change it on any single contract.",
+      "sub": "The fee a new {{hireOrder}} starts from. You can change it on any single {{hireOrder}}.",
       "listTitle": "Fees per {{production}} and {{cast}}",
       "listHint": "Set a fee for one {{cast}} and one {{production}} when it should differ from your default above.",
       "noCasts": "You have no {{casts}} yet. Set them up in {{Casts}} and the ladder, then set fees per {{production}} and {{cast}} here.",
@@ -507,14 +507,14 @@
       "save": "Save",
       "removeFee": "Remove this fee",
       "continue": "Continue",
-      "readOnly": "Contract settings are set by an admin. You can read them here."
+      "readOnly": "{{HireOrder}} settings are set by an admin. You can read them here."
     },
     "document": {
-      "heading": "Style your contract document",
-      "sub": "Set how contract numbers are built. Style the full layout in the template editor.",
+      "heading": "Style your {{hireOrder}} document",
+      "sub": "Set how {{hireOrder}} numbers are built. Style the full layout in the template editor.",
       "templateLink": "Open the document template editor",
       "continue": "Continue",
-      "readOnly": "Contract settings are set by an admin. You can read them here."
+      "readOnly": "{{HireOrder}} settings are set by an admin. You can read them here."
     },
     "artists": {
       "heading": "Add your {{artists}}",
@@ -538,15 +538,15 @@
     },
     "letterhead": {
       "heading": "Set your letterhead",
-      "sub": "Your name, address and logo print at the top of every contract."
+      "sub": "Your name, address and logo print at the top of every {{hireOrder}}."
     },
     "terms": {
       "heading": "Write your terms",
       "sub": "ShowFlow ships no default clauses. Start from a template and make it yours."
     },
     "countersign": {
-      "heading": "Choose how contracts get signed",
-      "sub": "The route the {{artist}} takes to sign the contract you send them."
+      "heading": "Choose how {{hireOrders}} get signed",
+      "sub": "The route the {{artist}} takes to sign the {{hireOrder}} you send them."
     }
   }
 }
