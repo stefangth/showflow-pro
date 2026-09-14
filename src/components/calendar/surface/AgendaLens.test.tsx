@@ -72,7 +72,7 @@ describe('AgendaLens', () => {
     expect(screen.getByTestId('agenda-order-status-pd-4')).toHaveTextContent('Awaiting countersign');
   });
 
-  it('shows "Confirm holds" for partially_filled and "Open casting" for open, and no action for cancelled', () => {
+  it('shows "Confirm holds" for partially_filled and "Start filling" for open, and no action for cancelled', () => {
     render(
       <AgendaLens
         entries={[
@@ -85,7 +85,7 @@ describe('AgendaLens', () => {
       />
     );
     expect(screen.getByTestId('agenda-action-a')).toHaveTextContent('Book who said yes');
-    expect(screen.getByTestId('agenda-action-b')).toHaveTextContent('Open casting');
+    expect(screen.getByTestId('agenda-action-b')).toHaveTextContent('Start filling');
     expect(screen.queryByTestId('agenda-action-c')).not.toBeInTheDocument();
   });
 
@@ -142,7 +142,7 @@ describe('AgendaLens', () => {
   it('renders the status badge for a row', () => {
     const e = entry({ id: 'pd-1', status: 'partially_filled' });
     render(<AgendaLens entries={[e]} onOpenEntry={vi.fn()} onAction={vi.fn()} />);
-    expect(screen.getByText('Casting')).toBeInTheDocument();
+    expect(screen.getByText('Filling')).toBeInTheDocument();
   });
 
   it('disables the "Confirm holds" action button and exposes its title when actionGates.confirmHolds is gated', () => {
@@ -178,7 +178,7 @@ describe('AgendaLens', () => {
     expect(btn).toHaveAttribute('title', 'Nope');
   });
 
-  it('disables the "Open casting" action button when actionGates.openCasting is gated', () => {
+  it('disables the "Start filling" action button when actionGates.openCasting is gated', () => {
     const e = entry({ id: 'pd-b', status: 'open' });
     render(
       <AgendaLens

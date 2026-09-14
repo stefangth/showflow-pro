@@ -156,7 +156,7 @@ export function EditorToolbar() {
                 <SelectItem key={u.id} value={u.id} className="text-xs">
                   <Token>{u.email}</Token>
                   {u.roles.length > 0 && (
-                    <span className="ml-2 text-muted-foreground">— {u.roles.map(roleLabel).join(', ')}</span>
+                    <span className="ml-2 text-muted-foreground">— {u.roles.map((role) => roleLabel(role)).join(', ')}</span>
                   )}
                 </SelectItem>
               ))}

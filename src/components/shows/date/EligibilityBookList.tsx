@@ -31,7 +31,7 @@ function joinNames(t: TFunction<"showsDetail">, names: string[]): string {
  */
 function requirementFactSentence(t: TFunction<"showsDetail">, requiredSkillNames: string[], qualifying: number, total: number): string {
   const requirement = requiredSkillNames.length > 0
-    ? t("eligibilityBookList.reqHasSkills", { skills: joinNames(t, requiredSkillNames) })
+    ? t("eligibilityBookList.reqHasSkills", { skillNames: joinNames(t, requiredSkillNames) })
     : t("eligibilityBookList.reqNoSkills");
   return t("eligibilityBookList.factSentence", { requirement, qualifying, total });
 }

@@ -77,7 +77,7 @@ describe("EligibilityPanelBody", () => {
     seed();
   });
 
-  it("shows one card per production: Fully covered with its cast chip, and a gap card with Link a cast", async () => {
+  it("shows one card per production: Fully covered with its cast chip, and a gap card with Link one cast", async () => {
     renderPanel(COVERAGE);
 
     // One card per PRODUCTION, not per (show, city) pair.
@@ -93,18 +93,18 @@ describe("EligibilityPanelBody", () => {
     expect(screen.getAllByText("Nord Ensemble").length).toBeGreaterThan(0);
 
     // Die Zauberflöte's Leipzig date has no tier-1 cast → a "1 gap" badge, the
-    // uncovered-city hint, and the dashed Link a cast affordance. "1 gap" appears
+    // uncovered-city hint, and the dashed Link one cast affordance. "1 gap" appears
     // twice: the header total and this production's own badge (the sole gap).
     expect(screen.getAllByText("1 gap")).toHaveLength(2);
     expect(screen.getByText(/no cast in leipzig yet/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /link a cast/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /link one cast/i })).toBeInTheDocument();
   });
 
   it("writes show_cast_eligibility when a cast is linked to the last remaining gap, and calls onDone", async () => {
     const onDone = vi.fn();
     renderPanel(COVERAGE, onDone);
 
-    const linkButton = await screen.findByRole("button", { name: /link a cast/i });
+    const linkButton = await screen.findByRole("button", { name: /link one cast/i });
     fireEvent.click(linkButton);
 
     const option = await screen.findByRole("button", { name: /süd ensemble/i });
@@ -172,7 +172,7 @@ describe("EligibilityPanelBody", () => {
     renderPanel(multiGapCoverage, onDone);
 
     // Two gap rows (Leipzig, Stuttgart) — link the first, which is Leipzig's.
-    const linkButtons = await screen.findAllByRole("button", { name: /link a cast/i });
+    const linkButtons = await screen.findAllByRole("button", { name: /link one cast/i });
     expect(linkButtons).toHaveLength(2);
     fireEvent.click(linkButtons[0]);
 
@@ -214,7 +214,7 @@ describe("EligibilityPanelBody", () => {
     // The null-city footnote renders for exactly this case.
     expect(await screen.findByText(/no city set/i)).toBeInTheDocument();
 
-    const linkButton = await screen.findByRole("button", { name: /link a cast/i });
+    const linkButton = await screen.findByRole("button", { name: /link one cast/i });
     fireEvent.click(linkButton);
     const option = await screen.findByRole("button", { name: /süd ensemble/i });
     fireEvent.click(option);
@@ -290,7 +290,7 @@ describe("EligibilityPanelBody", () => {
         nonEmptyCastIds: ["nord"],
       });
 
-      fireEvent.click(await screen.findByRole("button", { name: /link a cast/i }));
+      fireEvent.click(await screen.findByRole("button", { name: /link one cast/i }));
 
       expect(await screen.findByRole("button", { name: /süd ensemble/i })).toBeDisabled();
       expect(screen.getByRole("button", { name: /nord ensemble/i })).toBeEnabled();

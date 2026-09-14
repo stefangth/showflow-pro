@@ -1,17 +1,19 @@
 import { describe, it, expect, vi } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, render } from '@testing-library/react';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { PageMiniView } from './PageMini';
 import { settingsMini } from '@/lib/minis/pages/settings';
 import { settingsArt } from './illustrations/SettingsMini';
-import { MINIS, PAGE_KEYS, type MiniRole } from '@/lib/minis';
+import { MINIS, PAGE_KEYS, type MiniDef, type MiniRole } from '@/lib/minis';
 import { ART } from './illustrations';
+import { VOCABULARY, interpolateVocabulary } from '@/lib/orgKind';
 
 const base = {
   def: settingsMini,
   art: settingsArt,
   onHide: () => {},
   onResume: () => {},
+  vocab: VOCABULARY.production.en,
 } as const;
 
 describe('PageMiniView', () => {
@@ -20,7 +22,7 @@ describe('PageMiniView', () => {
     expect(screen.getByText('What settings decide')).toBeInTheDocument();
     expect(screen.getByText('Booking engine')).toBeInTheDocument();
     expect(screen.getByText('Casts and cities')).toBeInTheDocument();
-    expect(screen.getByText('Hire orders')).toBeInTheDocument();
+    expect(screen.getByText('Contracts')).toBeInTheDocument();
     expect(screen.getByText('Audit trail')).toBeInTheDocument();
   });
 
@@ -73,11 +75,17 @@ describe('PageMiniView', () => {
     for (const role of Object.keys(def.variants) as MiniRole[]) {
       for (const lang of ['en', 'de'] as const) {
         const { unmount } = renderWithProviders(
-          <PageMiniView def={def} role={role} lang={lang} art={ART[page]} dismissed={false} onHide={() => {}} onResume={() => {}} />,
+          <PageMiniView def={def} role={role} lang={lang} art={ART[page]} dismissed={false} onHide={() => {}} onResume={() => {}} vocab={VOCABULARY.production[lang]} />,
         );
-        expect(screen.getByText(def.eyebrow[lang])).toBeInTheDocument();
+        expect(screen.getByText(interpolateVocabulary(def.eyebrow[lang], VOCABULARY.production[lang]))).toBeInTheDocument();
         unmount();
       }
     }
+  });
+
+  it('substitutes vocabulary variables in step copy', () => {
+    const def = { ...MINIS.artists, eyebrow: { en: 'What {{artists}} are', de: 'Was {{Artists}} sind' } } as MiniDef;
+    render(<PageMiniView def={def} role="admin" lang="en" art={ART.artists} dismissed={false} onHide={() => {}} onResume={() => {}} vocab={VOCABULARY.staffing.en} />);
+    expect(screen.getByText('What people are')).toBeInTheDocument();
   });
 });

@@ -22,9 +22,9 @@
     "day": {
       "nothingScheduled": "nichts geplant",
       "pickADay": "Tag wählen",
-      "pickADayHint": "Wähle einen Tag, um seine Termine zu sehen und zu bearbeiten.",
+      "pickADayHint": "Wähle einen Tag, um seine {{showDates}} zu sehen und zu bearbeiten.",
       "keyHint": "↵ öffnen · Leertaste auswählen",
-      "openDate": "Termin öffnen"
+      "openDate": "{{ShowDate}} öffnen"
     }
   },
   "nav": {
@@ -33,13 +33,13 @@
     "system": "System",
     "getRunning": "Loslegen",
     "dashboard": "Heute",
-    "bookings": "Termine",
-    "hireOrders": "Engagementverträge",
+    "bookings": "{{ShowDates}}",
+    "hireOrders": "{{HireOrders}}",
     "availability": "Verfügbarkeit",
     "chats": "Chats",
     "help": "Hilfe",
-    "productions": "Produktionen",
-    "artists": "Artists",
+    "productions": "{{Productions}}",
+    "artists": "{{Artists}}",
     "admin": "Admin",
     "settings": "Einstellungen",
     "platform": "Plattform"
@@ -48,9 +48,13 @@
     "home": "Start"
   },
   "skillPicker": {
-    "newSkill": "Neuer Skill",
-    "nameLabel": "Name des Skills",
-    "create": "Skill hinzufügen"
+    "newSkill": "$t(common:skillPicker.newSkill_{{kind}})",
+    "newSkill_production": "Neuer Skill",
+    "newSkill_staffing": "Neue Qualifikation",
+    "nameLabel": "$t(common:skillPicker.nameLabel_{{kind}})",
+    "nameLabel_production": "Name des Skills",
+    "nameLabel_staffing": "Name der Qualifikation",
+    "create": "{{Skill}} hinzufügen"
   },
   "account": {
     "language": "Sprache",

@@ -76,7 +76,7 @@ describe('HelpPage deep links', () => {
   it('opens the answer named by ?item=', async () => {
     await i18n.changeLanguage('en');
     renderHelp('/help?item=A3.11');
-    expect(screen.getByRole('button', { name: /A date has no city\. Where do I fix that\?/i })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /One date has no city\. Where do I fix that\?/i })).toHaveAttribute(
       'aria-expanded',
       'true',
     );

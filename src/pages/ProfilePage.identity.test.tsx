@@ -38,7 +38,7 @@ describe("ProfilePage contact-visibility note (R4.4)", () => {
     renderWithProviders(<ProfilePage />);
     await waitFor(() => expect(screen.getByDisplayValue("Ada")).toBeInTheDocument());
     expect(
-      screen.getByText(/admins and producers in your organization can see the contact details on your artist record/i),
+      screen.getByText(/admins and Production Team in your organization can see the contact details on your artist record/i),
     ).toBeInTheDocument();
   });
 });

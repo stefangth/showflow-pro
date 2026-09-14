@@ -1,7 +1,7 @@
 {
   "availabilityPage": {
     "direct": {
-      "title": "Meine Termine",
+      "title": "Meine {{ShowDates}}",
       "subtitle": "Deine Buchungen und Verfügbarkeit. Markiere Termine, an denen du nicht frei bist."
     },
     "offer": {
@@ -11,13 +11,13 @@
   },
   "bookingsView": {
     "title": "Meine Buchungen",
-    "offerSubtitle": "Termine, für die du angefragt wurdest, basierend auf deiner Besetzungs-Eignung.",
-    "directSubtitle": "Termine, für die du gebucht bist, basierend auf deiner Besetzungs-Eignung."
+    "offerSubtitle": "{{ShowDates}}, für die du angefragt wurdest, basierend darauf, für welche {{casts}} du geeignet bist.",
+    "directSubtitle": "{{ShowDates}}, für die du gebucht bist, basierend darauf, für welche {{casts}} du geeignet bist."
   },
   "statusLabels": {
     "offer": {
       "suggested": "Angefragt",
-      "soft_booked": "Zugesagt · wartet auf dein Produktionsteam",
+      "soft_booked": "Zugesagt · wartet auf dein {{roleProducer}}",
       "soft_booked_autoConfirm": "Zugesagt",
       "confirmed": "Gebucht",
       "unanswered": "Noch nicht angefragt",
@@ -25,7 +25,7 @@
     },
     "direct": {
       "suggested": "Angefragt",
-      "soft_booked": "Zugesagt · wartet auf dein Produktionsteam",
+      "soft_booked": "Zugesagt · wartet auf dein {{roleProducer}}",
       "soft_booked_autoConfirm": "Zugesagt",
       "confirmed": "Gebucht",
       "unanswered": "Noch nicht angefragt",
@@ -35,16 +35,16 @@
   "meter": {
     "offer": {
       "title": "Antwortquote",
-      "headerSentence": "Deine Antwortquote bei Terminen, für die du angefragt wurdest.",
+      "headerSentence": "Deine Antwortquote über alle {{ShowDates}}, für die du angefragt wurdest.",
       "footer": "Klicke, um deine offenen Anfragen zu sehen →",
-      "explainer": "Zählt Termine, bei denen du zugesagt hast oder gebucht wurdest, von allen Terminen, für die du angefragt wurdest. Nur für dich, niemand wird damit bewertet."
+      "explainer": "Zählt {{ShowDates}}, bei denen du zugesagt hast oder gebucht wurdest, von allen, für die du angefragt wurdest. Nur für dich, niemand wird damit bewertet."
     },
     "direct": {
-      "title": "Gebuchte Termine",
-      "headerSentence": "Dein gebuchter Anteil an den Terminen, für die du geeignet bist.",
-      "footer": "Klicke, um deine Termine zu sehen →",
-      "explainer": "Termine, für die du gebucht bist, von allen Terminen, für die du geeignet bist."
+      "title": "Gebuchte {{ShowDates}}",
+      "headerSentence": "Dein Anteil gebuchter {{ShowDates}} von allen, für die du geeignet bist.",
+      "footer": "Klicke, um deine {{ShowDates}} zu sehen →",
+      "explainer": "{{ShowDates}}, für die du gebucht bist, von allen, für die du geeignet bist."
     }
   },
-  "deliveryHint": "Artists werden per E-Mail angefragt, sobald eine Stufe geöffnet wird."
+  "deliveryHint": "{{Artists}} werden per E-Mail angefragt, sobald eine Stufe geöffnet wird."
 }

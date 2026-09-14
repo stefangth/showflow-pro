@@ -147,7 +147,7 @@ function buildBodySentence(
   const first = requiredSkillNames.length > 0
     ? t("tierLadder.bodyWithSkills", {
         count: counts.matchCount, matchCount: counts.matchCount, castTotal: counts.castTotal,
-        artistWord, label, skills: requiredSkillNames.join(", "),
+        artistWord, label, skillNames: requiredSkillNames.join(", "),
       })
     : t("tierLadder.bodyAvailable", {
         count: counts.matchCount, matchCount: counts.matchCount, castTotal: counts.castTotal,

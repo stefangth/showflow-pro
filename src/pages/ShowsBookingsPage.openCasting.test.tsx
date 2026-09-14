@@ -96,7 +96,7 @@ describe("ShowsBookingsPage — Agenda 'Open casting' opens straight to the Offe
     fireEvent.click(await screen.findByRole("tab", { name: "Agenda" }));
 
     const actionBtn = await screen.findByTestId("agenda-action-sd-open");
-    expect(actionBtn).toHaveTextContent("Open casting");
+    expect(actionBtn).toHaveTextContent("Start filling");
     fireEvent.click(actionBtn);
 
     const sheet = screen.getByTestId("detail-sheet");

@@ -75,7 +75,7 @@ describe("AtRiskDateCard: exhausted", () => {
         onOpenDate={vi.fn()}
       />,
     );
-    expect(screen.getByText(/Nobody on the roster is free that night either\./)).toBeInTheDocument();
+    expect(screen.getByText(/Nobody on the roster is free that day either\./)).toBeInTheDocument();
     // The button is still offered — the Dates board still has other levers
     // (edit slots, add someone new to the roster) — but the "N free" claim
     // that would be false (0 free) must not render.
@@ -94,6 +94,6 @@ describe("AtRiskDateCard: exhausted", () => {
         onOpenDate={vi.fn()}
       />,
     );
-    expect(screen.getByText(/14 artists on the roster, 4 of them free that night\./)).toBeInTheDocument();
+    expect(screen.getByText(/14 artists on the roster, 4 of them free that day\./)).toBeInTheDocument();
   });
 });

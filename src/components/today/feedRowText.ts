@@ -25,19 +25,19 @@ export function feedRowText(
       // `confirm_bookings` cannot book, so the row names an admin instead of telling
       // them to do it. Autopilot orgs (a yes books on its own) keep booked wording.
       if (!opts?.producerConfirmation) {
-        return t("feed.book", { count: row.count, names: row.names, show: row.show, date: row.date });
+        return t("feed.book", { count: row.count, names: row.names, showTitle: row.show, date: row.date });
       }
       return opts.canBook === false
-        ? t("feed.bookHoldAdmin", { count: row.count, names: row.names, show: row.show, date: row.date })
-        : t("feed.bookHold", { count: row.count, names: row.names, show: row.show, date: row.date });
+        ? t("feed.bookHoldAdmin", { count: row.count, names: row.names, showTitle: row.show, date: row.date })
+        : t("feed.bookHold", { count: row.count, names: row.names, showTitle: row.show, date: row.date });
     case "ask":
-      return t("feed.ask", { count: row.count, show: row.show, date: row.date });
+      return t("feed.ask", { count: row.count, showTitle: row.show, date: row.date });
     case "draft":
-      return t("feed.draft", { count: row.count, show: row.show, date: row.date });
+      return t("feed.draft", { count: row.count, showTitle: row.show, date: row.date });
     case "notify":
       return t("feed.notify", {
         names: row.names || t("feed.theCast"),
-        show: row.show,
+        showTitle: row.show,
         date: row.date,
       });
   }

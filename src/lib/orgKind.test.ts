@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { ORG_KINDS, DEFAULT_ORG_KIND, isOrgKind, coerceOrgKind, ORG_KIND_LABELS, VOCABULARY } from "./orgKind";
+import {
+  ORG_KINDS,
+  DEFAULT_ORG_KIND,
+  isOrgKind,
+  coerceOrgKind,
+  ORG_KIND_LABELS,
+  VOCABULARY,
+  interpolateVocabulary,
+} from "./orgKind";
 
 const DASH = /[–—]/;
 
@@ -50,5 +58,28 @@ describe("orgKind registry", () => {
       expect(v.Shows.charAt(0)).toBe(v.Shows.charAt(0).toUpperCase());
       expect(v.show.charAt(0)).toBe(v.show.charAt(0).toLowerCase());
     }
+  });
+});
+
+describe("vocabulary extensions", () => {
+  it("carries the role label and the kind id", () => {
+    expect(VOCABULARY.production.en.roleProducer).toBe("Production Team");
+    expect(VOCABULARY.staffing.en.roleProducer).toBe("Booking team");
+    expect(VOCABULARY.staffing.de.roleProducer).toBe("Buchungsteam");
+    for (const kind of ORG_KINDS) for (const lang of ["en", "de"] as const) expect(VOCABULARY[kind][lang].kind).toBe(kind);
+  });
+});
+
+describe("interpolateVocabulary", () => {
+  const vocab = VOCABULARY.staffing.en;
+  it("replaces known vocabulary variables, every occurrence", () => {
+    expect(interpolateVocabulary("Add a {{artist}} to the {{cast}}. {{Artists}} first.", vocab))
+      .toBe("Add a staff member to the team. People first.");
+  });
+  it("leaves runtime variables and unknown tokens alone", () => {
+    expect(interpolateVocabulary("{{count}} {{shows}} for {{showTitle}}", vocab)).toBe("{{count}} projects for {{showTitle}}");
+  });
+  it("is the identity on text without variables", () => {
+    expect(interpolateVocabulary("plain", vocab)).toBe("plain");
   });
 });

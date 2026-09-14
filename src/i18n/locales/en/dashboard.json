@@ -5,24 +5,24 @@
     "awaitingResponse": "Waiting on you",
     "allCaughtUp": "You're all caught up. Nothing to answer.",
     "respond": "Answer",
-    "hireOrdersTitle": "Your contracts",
-    "hireOrdersEmpty": "Your contracts show up here. When your production team sends you one, it arrives by email and you can review and sign it here.",
+    "hireOrdersTitle": "Your {{hireOrders}}",
+    "hireOrdersEmpty": "Your {{hireOrders}} appear here. When your {{roleProducer}} sends you one, it arrives by email and you can review and sign it here.",
     "download": "Download",
-    "myCasts": "My Casts",
-    "castsLoadError": "Failed to load your casts.",
-    "noCastsYet": "You haven't been added to any casts yet.",
+    "myCasts": "My {{Casts}}",
+    "castsLoadError": "Failed to load your {{casts}}.",
+    "noCastsYet": "You haven't been added to any {{casts}} yet.",
     "member": "Member",
-    "respondedOfTotal": "{{responded}} of {{total}} dates",
+    "respondedOfTotal": "{{responded}} of {{total}} {{showDates}}",
     "unansweredMore": "+{{count}} more",
     "offer": {
       "question": "Can you do this one?",
       "acceptNote": "Say yes and the part is yours, nobody has to confirm it afterwards.",
-      "acceptNoteConfirm": "Say yes and the part is yours to lose, your production team still has to confirm it."
+      "acceptNoteConfirm": "Say yes and the part is yours to lose, your {{roleProducer}} still has to confirm it."
     }
   },
   "producer": {
     "heading": "Dashboard",
-    "subheading": "Who's waiting on you to book, across upcoming dates."
+    "subheading": "Who's waiting on you to book, across upcoming {{showDates}}."
   },
   "firstRun": {
     "pickUpWhereLeftOff": "Pick up where you left off",
@@ -42,11 +42,11 @@
     "nothingYet": "Nothing yet",
     "offersArriving_one": "{{count}} ask arriving in tomorrow's daily send",
     "offersArriving_other": "{{count}} asks arriving in tomorrow's daily send",
-    "datesBookedAppearHere": "Dates booked for you appear here",
-    "producerSchedule": "Your production team's schedule",
+    "datesBookedAppearHere": "{{ShowDates}} booked for you appear here",
+    "producerSchedule": "Your {{roleProducer}} schedule",
     "keptOutOfList": "Kept out of every list before anyone books you",
-    "firstOfferHint": "Your first ask lands here once {{orgName}} has dates for your cast.",
-    "firstBookingHint": "Your first booking lands here once {{orgName}} has dates.",
+    "firstOfferHint": "Your first ask lands here once {{orgName}} has {{showDates}} for your {{cast}}.",
+    "firstBookingHint": "Your first booking lands here once {{orgName}} has {{showDates}}.",
     "blockedTitle_one": "{{count}} date not free",
     "blockedTitle_other": "{{count}} dates not free"
   }

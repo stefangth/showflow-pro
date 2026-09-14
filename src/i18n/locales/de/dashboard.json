@@ -5,24 +5,30 @@
     "awaitingResponse": "Wartet auf dich",
     "allCaughtUp": "Du bist auf dem neuesten Stand. Nichts zu beantworten.",
     "respond": "Beantworten",
-    "hireOrdersTitle": "Deine Verträge",
-    "hireOrdersEmpty": "Deine Verträge erscheinen hier. Wenn dir dein Produktionsteam einen schickt, kommt er per E-Mail an, und du kannst ihn hier prüfen und unterschreiben.",
+    "hireOrdersTitle": "Deine {{hireOrders}}",
+    "hireOrdersEmpty": "Deine {{hireOrders}} erscheinen hier. Wenn dir dein {{roleProducer}} einen schickt, kommt er per E-Mail an, und du kannst ihn hier prüfen und unterschreiben.",
     "download": "Herunterladen",
-    "myCasts": "Meine Besetzungen",
-    "castsLoadError": "Deine Besetzungen konnten nicht geladen werden.",
-    "noCastsYet": "Du wurdest noch keiner Besetzung hinzugefügt.",
+    "myCasts": "Meine {{Casts}}",
+    "castsLoadError": "Deine {{Casts}} konnten nicht geladen werden.",
+    "noCastsYet": "$t(dashboard:artist.noCastsYet_{{kind}})",
+    "noCastsYet_production": "Du wurdest noch keiner Besetzung hinzugefügt.",
+    "noCastsYet_staffing": "Du wurdest noch keinem Team hinzugefügt.",
     "member": "Mitglied",
-    "respondedOfTotal": "{{responded}} von {{total}} Terminen",
+    "respondedOfTotal": "$t(dashboard:artist.respondedOfTotal_{{kind}})",
+    "respondedOfTotal_production": "{{responded}} von {{total}} Terminen",
+    "respondedOfTotal_staffing": "{{responded}} von {{total}} Schichten",
     "unansweredMore": "+{{count}} weitere",
     "offer": {
-      "question": "Kannst Du diesen Termin übernehmen?",
+      "question": "$t(dashboard:artist.offer.question_{{kind}})",
+      "question_production": "Kannst Du diesen Termin übernehmen?",
+      "question_staffing": "Kannst Du diese Schicht übernehmen?",
       "acceptNote": "Sag Ja, und die Position gehört Dir, niemand muss das danach noch bestätigen.",
-      "acceptNoteConfirm": "Sag Ja, und die Position ist so gut wie Deine, Dein Produktionsteam muss sie noch bestätigen."
+      "acceptNoteConfirm": "Sag Ja, und die Position ist so gut wie Deine, Dein {{roleProducer}} muss sie noch bestätigen."
     }
   },
   "producer": {
     "heading": "Dashboard",
-    "subheading": "Wer noch auf deine Buchung wartet, über alle bevorstehenden Termine."
+    "subheading": "Wer noch auf deine Buchung wartet, über alle bevorstehenden {{ShowDates}}."
   },
   "firstRun": {
     "pickUpWhereLeftOff": "Mach weiter, wo du aufgehört hast",
@@ -42,11 +48,15 @@
     "nothingYet": "Noch nichts",
     "offersArriving_one": "{{count}} Anfrage in der morgigen Sendung",
     "offersArriving_other": "{{count}} Anfragen in der morgigen Sendung",
-    "datesBookedAppearHere": "Für dich gebuchte Termine erscheinen hier",
-    "producerSchedule": "Der Zeitplan deines Produktionsteams",
+    "datesBookedAppearHere": "Für dich gebuchte {{ShowDates}} erscheinen hier",
+    "producerSchedule": "$t(dashboard:artistQueue.producerSchedule_{{kind}})",
+    "producerSchedule_production": "Der Zeitplan deines Production Teams",
+    "producerSchedule_staffing": "Der Zeitplan deines Buchungsteams",
     "keptOutOfList": "Aus jeder Liste herausgehalten, bevor dich jemand bucht",
-    "firstOfferHint": "Deine erste Anfrage landet hier, sobald {{orgName}} Termine für deine Besetzung hat.",
-    "firstBookingHint": "Deine erste Buchung landet hier, sobald {{orgName}} Termine hat.",
+    "firstOfferHint": "$t(dashboard:artistQueue.firstOfferHint_{{kind}})",
+    "firstOfferHint_production": "Deine erste Anfrage landet hier, sobald {{orgName}} Termine für deine Besetzung hat.",
+    "firstOfferHint_staffing": "Deine erste Anfrage landet hier, sobald {{orgName}} Schichten für dein Team hat.",
+    "firstBookingHint": "Deine erste Buchung landet hier, sobald {{orgName}} {{ShowDates}} hat.",
     "blockedTitle_one": "{{count}} Termin nicht frei",
     "blockedTitle_other": "{{count}} Termine nicht frei"
   }

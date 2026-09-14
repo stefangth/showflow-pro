@@ -2,22 +2,22 @@
   "actionCopy": {
     "confirm": {
       "bareConsequence": "Book gives them the part.",
-      "withDigest": "Book gives them the part. The artist sees it in the app right away. The booking email goes out in the daily send at {{time}}.",
-      "appOnly": "Book gives them the part and notifies the artist in the app right away."
+      "withDigest": "Book gives them the part. The {{artist}} sees it in the app right away. The booking email goes out in the daily send at {{time}}.",
+      "appOnly": "Book gives them the part and notifies the {{artist}} in the app right away."
     },
     "accept": {
       "holdTitle": "Said yes",
-      "holdDescription": "You said yes. Your producer has the last word next.",
+      "holdDescription": "You said yes. Your {{roleProducer}} has the last word next.",
       "bookedTitle": "Said yes. You're booked."
     },
     "softBookedMeaning": "Said yes, waiting on you. Not booked until you book it.",
-    "tierConceptNote": "Casts are asked in priority order. Asking starts with the first round. If it can't fill the date, you open the next round.",
-    "dateSourceNote": "You can add a date by hand here. If your workspace syncs from Airtable, those dates keep updating on their own, and a date you add here is not changed by a sync.",
-    "unrestrictedEligibility": "This date has no cast limits, so anyone in {{org}} can be booked here.",
+    "tierConceptNote": "{{Casts}} are asked in priority order. Asking starts with the first round. If it can't fill the {{showDate}}, you open the next round.",
+    "dateSourceNote": "You can add one {{showDate}} by hand here. If your workspace syncs from Airtable, those {{showDates}} keep updating on their own, and the {{showDate}} you add here is not changed by a sync.",
+    "unrestrictedEligibility": "This {{showDate}} has no {{cast}} limits, so anyone in {{org}} can be booked here.",
     "cancel": {
-      "title": "Cancel {{artist}}'s booking?",
-      "understudyLine": "If {{artist}} is in the main cast, the understudy who has been waiting longest and said yes moves up automatically.",
-      "whoHearsFallback": "The artist is notified in the app."
+      "title": "Cancel {{artistName}}'s booking?",
+      "understudyLine": "If {{artistName}} is in the main {{cast}}, the {{understudy}} who has been waiting longest and said yes moves up automatically.",
+      "whoHearsFallback": "The {{artist}} is notified in the app."
     }
   },
   "timingCopy": {
@@ -25,25 +25,25 @@
     "scope": {
       "berlin": "Daily send times include their timezone.",
       "offNote": "These hours change nothing while the booking flow is off.",
-      "directBookDeadFields": "You book artists directly, so the answer-by window and the daily send hour change nothing.",
+      "directBookDeadFields": "You book {{artists}} directly, so the answer-by window and the daily send hour change nothing.",
       "onlyConfirmationLive": "Only the booking send hour is live.",
-      "confirmationHourStillLive": "The booking send hour still runs: it sets when booked artists are notified of schedule changes in the app."
+      "confirmationHourStillLive": "The booking send hour still runs: it sets when booked {{artists}} are notified of schedule changes in the app."
     },
     "tonight": {
-      "directConfirm": "Newly booked artists get the booking send at {{time}}.",
-      "digestConfirm_one": "When a round opens, asks go out in the next {{offerTime}} send. Artists get {{count}} hour to answer, and bookings mail at {{time}}.",
-      "digestConfirm_other": "When a round opens, asks go out in the next {{offerTime}} send. Artists get {{count}} hours to answer, and bookings mail at {{time}}.",
-      "digestNoConfirm_one": "When a round opens, asks go out in the next {{offerTime}} send. Artists get {{count}} hour to answer.",
-      "digestNoConfirm_other": "When a round opens, asks go out in the next {{offerTime}} send. Artists get {{count}} hours to answer.",
-      "immediateConfirm_one": "When a round opens, asks email straight away. Artists get {{count}} hour to answer, and bookings mail at {{time}}.",
-      "immediateConfirm_other": "When a round opens, asks email straight away. Artists get {{count}} hours to answer, and bookings mail at {{time}}.",
-      "immediateNoConfirm_one": "When a round opens, asks email straight away. Artists get {{count}} hour to answer.",
-      "immediateNoConfirm_other": "When a round opens, asks email straight away. Artists get {{count}} hours to answer."
+      "directConfirm": "Newly booked {{artists}} get the booking send at {{time}}.",
+      "digestConfirm_one": "When a round opens, asks go out in the next {{offerTime}} send. {{Artists}} get {{count}} hour to answer, and bookings mail at {{time}}.",
+      "digestConfirm_other": "When a round opens, asks go out in the next {{offerTime}} send. {{Artists}} get {{count}} hours to answer, and bookings mail at {{time}}.",
+      "digestNoConfirm_one": "When a round opens, asks go out in the next {{offerTime}} send. {{Artists}} get {{count}} hour to answer.",
+      "digestNoConfirm_other": "When a round opens, asks go out in the next {{offerTime}} send. {{Artists}} get {{count}} hours to answer.",
+      "immediateConfirm_one": "When a round opens, asks email straight away. {{Artists}} get {{count}} hour to answer, and bookings mail at {{time}}.",
+      "immediateConfirm_other": "When a round opens, asks email straight away. {{Artists}} get {{count}} hours to answer, and bookings mail at {{time}}.",
+      "immediateNoConfirm_one": "When a round opens, asks email straight away. {{Artists}} get {{count}} hour to answer.",
+      "immediateNoConfirm_other": "When a round opens, asks email straight away. {{Artists}} get {{count}} hours to answer."
     }
   },
   "cockpit": {
     "upNext": {
-      "direct": "Direct booking: producers book from who can be asked",
+      "direct": "Direct booking: {{roleProducer}} books from who can be asked",
       "digest": "Daily send · {{time}}",
       "expiry_one": "{{count}} ask expires {{date}}",
       "expiry_other": "{{count}} asks expire {{date}}",
@@ -55,8 +55,8 @@
       "acceptedWaiting": "{{count}} said yes, waiting on you",
       "mainSlotOpen_one": "{{count}} main part open",
       "mainSlotOpen_other": "{{count}} main parts open",
-      "understudySlotOpen_one": "{{count}} understudy part open",
-      "understudySlotOpen_other": "{{count}} understudy parts open",
+      "understudySlotOpen_one": "{{count}} {{understudy}} part open",
+      "understudySlotOpen_other": "{{count}} {{understudy}} parts open",
       "readyToConfirm": "Waiting on you"
     },
     "headerCta": {
@@ -74,7 +74,7 @@
     "hireFooter": {
       "ready": "READY",
       "left": "{{count}} LEFT",
-      "detailReady": "All parts booked, drafts one contract per artist",
+      "detailReady": "All parts booked, drafts one {{hireOrder}} per {{artist}}",
       "detailWaiting": "Waiting on {{remaining}} of {{total}} parts"
     }
   }

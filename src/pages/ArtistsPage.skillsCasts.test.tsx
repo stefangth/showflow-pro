@@ -50,8 +50,8 @@ describe("ArtistsPage roster card — labelled SKILLS / CASTS rows (1j)", () => 
   it("shows the SKILLS and CASTS eyebrow labels", async () => {
     renderWithProviders(<ArtistsPage />);
     await waitFor(() => expect(screen.getByText("Sam Skilled")).toBeInTheDocument());
-    expect(screen.getByText("SKILLS")).toBeInTheDocument();
-    expect(screen.getByText("CASTS")).toBeInTheDocument();
+    expect(screen.getAllByText("Skills").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Casts").length).toBeGreaterThan(0);
   });
 
   it("caps skill badges at 3 with a +2 mono overflow badge for an artist with 5 skills", async () => {

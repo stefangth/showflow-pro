@@ -112,7 +112,7 @@ describe('DayDetail', () => {
     );
     const header = screen.getByTestId('day-rail-header');
     expect(header).toHaveTextContent('Thu 20 Aug');
-    expect(header).toHaveTextContent('casting');
+    expect(header).toHaveTextContent('filling');
     expect(header).toHaveTextContent('Cirque Noir');
   });
 

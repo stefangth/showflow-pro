@@ -13,8 +13,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'A0.1', role: 'admin', stage: 0, status: 'new', surface: 'Invitation email', updated: '2026-08-14',
     q: { en: 'What is ShowFlow, and what does it do?', de: 'Was ist ShowFlow, und was macht es?' },
     a: {
-      en: 'ShowFlow is where your organization plans its productions and books the artists for them. Your invitation email now opens with that line, before it asks you to accept anything.',
-      de: 'ShowFlow ist der Ort, an dem deine Organisation ihre Produktionen plant und die Artists dafür bucht. Deine Einladungs-E-Mail beginnt jetzt mit genau diesem Satz, bevor sie dich um irgendeine Zusage bittet.',
+      en: 'ShowFlow is where your organization plans its {{productions}} and books the {{artists}} for them. Your invitation email now opens with that line, before it asks you to accept anything.',
+      de: 'ShowFlow ist der Ort, an dem deine Organisation ihre {{productions}} plant und die {{artists}} dafür bucht. Deine Einladungs-E-Mail beginnt jetzt mit genau diesem Satz, bevor sie dich um irgendeine Zusage bittet.',
     },
   },
   {
@@ -61,15 +61,15 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'A1.3', role: 'admin', stage: 1, status: 'new', surface: 'Accept invite, success card', updated: '2026-08-18',
     q: { en: 'What is my next move after accepting?', de: 'Was ist mein nächster Schritt nach dem Annehmen?' },
     a: {
-      en: 'The success card names it. As admin or on the production team it names the Get running board and how far the workspace still is from its first ask, with an Open Get running button. As an artist it points you straight to your availability.',
-      de: 'Die Erfolgs-Karte nennt ihn. Als Admin oder im Produktionsteam nennt sie das Get running Board und wie weit der Arbeitsbereich noch von seiner ersten Anfrage entfernt ist, mit einem Button Get running öffnen. Als Artist verweist sie dich direkt auf deine Verfügbarkeit.',
+      en: 'The success card names it. As admin or in {{roleProducer}} it names the Get running board and how far the workspace still is from its first ask, with an Open Get running button. In the {{artist}} role it points you straight to your availability.',
+      de: 'Die Erfolgs-Karte nennt ihn. Als Admin oder im {{roleProducer}} nennt sie das Get running Board und wie weit der Arbeitsbereich noch von seiner ersten Anfrage entfernt ist, mit einem Button Get running öffnen. Als {{Artist}} verweist sie dich direkt auf deine Verfügbarkeit.',
     },
   },
   {
     id: 'A2.1', role: 'admin', stage: 2, status: 'ok', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'Where am I? Is this thing empty, or broken?', de: 'Wo bin ich? Ist das hier leer, oder kaputt?' },
     a: {
-      en: 'Neither. The dashboard shows your organization’s real numbers straight away, starting at zero. Get running, in the sidebar under Workspace, is the walk through for the setup that still needs doing, in order.',
+      en: 'Neither. The dashboard displays your organization’s real numbers straight away, starting at zero. Get running, in the sidebar under Workspace, is the walk through for the setup that still needs doing, in order.',
       de: 'Weder noch. Das Dashboard zeigt dir sofort die echten Zahlen deiner Organisation, sie fangen einfach bei null an. Get running, in der Sidebar unter Workspace, ist der Rundgang durch das Setup, das noch aussteht, der Reihe nach.',
     },
   },
@@ -99,34 +99,34 @@ export const HELP_ITEMS: readonly HelpItem[] = [
   },
   {
     id: 'A3.2', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, add your artists task', updated: '2026-08-18',
-    q: { en: 'How do my people get in? How do artists get accounts?', de: 'Wie kommen meine Leute rein? Wie bekommen Artists ein Konto?' },
+    q: { en: 'How do my people get in? How do {{artists}} get accounts?', de: 'Wie kommen meine Leute rein? Wie bekommen {{Artists}} ein Konto?' },
     a: {
-      en: 'Get running has an Add your artists task, so you can no longer finish setup with nobody in the workspace. It counts as done once there is at least one active artist. Asks reach booking email addresses without app accounts, so adding artists to the roster is the real prerequisite and login invites are optional.',
-      de: 'Get running hat eine Aufgabe Deine Artists hinzufügen, du kannst das Setup also nicht abschließen, wenn niemand im Workspace ist. Sie gilt als erledigt, sobald es mindestens einen aktiven Artist gibt. Anfragen erreichen Buchungs-E-Mail-Adressen auch ohne App-Konto, das eigentliche Muss ist also, Artists in die Künstlerliste aufzunehmen, Login-Einladungen sind optional.',
+      en: 'Get running has an Add your {{artists}} task, so you can no longer finish setup with nobody in the workspace. It counts as done once there is at least one active {{artist}}. Asks reach booking email addresses without app accounts, so adding {{artists}} to the roster is the real prerequisite and login invites are optional.',
+      de: 'Get running hat eine Aufgabe Deine {{Artists}} hinzufügen, du kannst das Setup also nicht abschließen, wenn niemand im Workspace ist. Sie gilt als erledigt, sobald mindestens ein {{artist}} aktiv ist. Anfragen erreichen Buchungs-E-Mail-Adressen auch ohne App-Konto, das eigentliche Muss ist also, {{artists}} in die Personenliste aufzunehmen, Login-Einladungen sind optional.',
     },
   },
   {
     id: 'A3.1', role: 'admin', stage: 3, status: 'new', surface: 'Get running board · Help center', updated: '2026-08-18',
-    q: { en: 'What are casts, and who gets asked first? What is the mental model?', de: 'Was sind Besetzungen, und wer wird zuerst gefragt? Was ist das Denkmodell dahinter?' },
+    q: { en: 'What are {{casts}}, and who gets asked first? What is the mental model?', de: 'Was sind {{Casts}}, und wer wird zuerst gefragt? Was ist das Denkmodell dahinter?' },
     a: {
-      en: 'Casts are the groups you book from, and each date asks them in order: the top cast first, then the next one down if it still needs people. The Rank your casts and Check who is eligible tasks on Get running assume that model, and each links straight to the Help center, which carries it end to end.',
-      de: 'Besetzungen sind die Gruppen, aus denen du buchst, und jeder Termin fragt sie der Reihe nach: zuerst die oberste Besetzung, dann die nächste, wenn noch Leute fehlen. Die Aufgaben Deine Besetzungen reihen und Prüfen, wer berechtigt ist auf Get running setzen dieses Modell voraus, und beide verlinken direkt auf das Hilfe-Center, das es von Anfang bis Ende erklärt.',
+      en: '{{Casts}} are the groups you book from, and each {{showDate}} asks them in order: the top {{cast}} first, then the next one down if it still needs people. The Rank your {{casts}} and Check who is eligible tasks on Get running assume that model, and each links straight to the Help center, which carries it end to end.',
+      de: '{{Casts}} sind die Gruppen, aus denen du buchst, und alle {{showDates}} fragen sie der Reihe nach: zuerst die oberste Gruppe, dann die nächste, wenn noch Leute fehlen. Die Aufgaben Deine {{Casts}} reihen und Prüfen, wer berechtigt ist auf Get running setzen dieses Modell voraus, und beide verlinken direkt auf das Hilfe-Center, das es von Anfang bis Ende erklärt.',
     },
   },
   {
     id: 'A3.3', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, timing task', updated: '2026-08-18',
     q: { en: 'What happens tonight, once I finish setup?', de: 'Was passiert heute Abend, sobald ich das Setup abgeschlossen habe?' },
     a: {
-      en: 'The Confirm the offer timing task narrates it from your own flow rather than a generic example: whether asks go out the moment a date opens up to the next cast, wait for the evening Daily send, or are switched off entirely.',
-      de: 'Die Aufgabe Angebotszeitpunkt bestätigen erzählt es aus deinem eigenen Flow, nicht aus einem allgemeinen Beispiel: ob Anfragen in dem Moment rausgehen, in dem sich der Termin für die nächste Besetzung öffnet, auf den abendlichen Täglichen Versand warten, oder ganz ausgeschaltet sind.',
+      en: 'The Confirm the offer timing task narrates it from your own flow rather than a generic example: whether asks go out the moment {{showDates}} open up to the next {{cast}}, wait for the evening Daily send, or are switched off entirely.',
+      de: 'Die Aufgabe Angebotszeitpunkt bestätigen erzählt es aus deinem eigenen Flow, nicht aus einem allgemeinen Beispiel: ob Anfragen in dem Moment rausgehen, in dem sich {{ShowDates}} für die nächste Gruppe öffnen, auf den abendlichen Täglichen Versand warten, oder ganz ausgeschaltet sind.',
     },
   },
   {
     id: 'A3.4', role: 'admin', stage: 3, status: 'new', surface: 'Editor toolbar, view as', updated: '2026-08-18',
-    q: { en: 'Do artists see what I see? What does their side look like?', de: 'Sehen Artists dasselbe wie ich? Wie sieht ihre Seite aus?' },
+    q: { en: 'Do {{artists}} see what I see? What does their side look like?', de: 'Sehen {{Artists}} dasselbe wie ich? Wie sieht ihre Seite aus?' },
     a: {
-      en: 'Use view as in the editor toolbar to look at the app as an artist, scoped to what the picker can genuinely show.',
-      de: 'Nutz View as in der Editor-Leiste, um die App als Artist zu sehen, begrenzt auf das, was der Umschalter wirklich zeigen kann.',
+      en: 'Use view as in the editor toolbar to look at the app in the {{artist}} role, scoped to what the picker can genuinely display.',
+      de: 'Nutz View as in der Editor-Leiste, um die App als {{Artist}} zu sehen, begrenzt auf das, was der Umschalter wirklich zeigen kann.',
     },
   },
   {
@@ -141,111 +141,111 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'A3.6', role: 'admin', stage: 3, status: 'ok', surface: 'Dates, rehearsal', updated: '2026-08-14',
     q: { en: 'Can I test this without emailing real people?', de: 'Kann ich das testen, ohne echten Leuten E-Mails zu schicken?' },
     a: {
-      en: 'Yes. Rehearse the next date shows exactly who would be asked and when. Nothing is created and no email leaves.',
+      en: 'Yes. Rehearse the next {{showDate}} tells you exactly who would be asked and when. Nothing is created and no email leaves.',
       de: 'Ja. Rehearse the next date zeigt genau, wer wann gefragt würde. Es wird nichts angelegt, und keine E-Mail geht raus.',
     },
   },
   {
     id: 'A3.7', role: 'admin', stage: 3, status: 'new', surface: 'Settings, Organization', updated: '2026-08-15',
-    q: { en: 'What language do the emails and contract PDFs go out in?', de: 'In welcher Sprache gehen die E-Mails und Engagementvertrag-PDFs raus?' },
+    q: { en: 'What language do the emails and {{hireOrder}} PDFs go out in?', de: 'In welcher Sprache gehen die E-Mails und {{HireOrder}}-PDFs raus?' },
     a: {
-      en: 'In your workspace language, set once under Settings then Organization. When it is German, ask, confirmation, and contract emails, and the contract PDFs, are sent in German with German dates and money formatting. This is separate from the app language each person picks for themselves in the account menu, which only changes what that one person sees on screen.',
-      de: 'In der Sprache deines Arbeitsbereichs, die du einmal unter Einstellungen dann Organisation festlegst. Steht sie auf Deutsch, gehen Anfrage-, Bestätigungs- und Engagementvertrag-E-Mails sowie die Engagementvertrag-PDFs auf Deutsch raus, mit deutschem Datums- und Geldformat. Das ist getrennt von der App-Sprache, die jede Person im Kontomenü für sich wählt und die nur ändert, was diese eine Person auf dem Bildschirm sieht.',
+      en: 'In your workspace language, set once under Settings then Organization. When it is German, ask, confirmation, and {{hireOrder}} emails, and the {{hireOrder}} PDFs, are sent in German with German dates and money formatting. This is separate from the app language each person picks for themselves in the account menu, which only changes what that one person sees on screen.',
+      de: 'In der Sprache deines Arbeitsbereichs, die du einmal unter Einstellungen dann Organisation festlegst. Steht sie auf Deutsch, gehen Anfrage-, Bestätigungs- und {{HireOrder}}-E-Mails sowie die {{HireOrder}}-PDFs auf Deutsch raus, mit deutschem Datums- und Geldformat. Das ist getrennt von der App-Sprache, die jede Person im Kontomenü für sich wählt und die nur ändert, was diese eine Person auf dem Bildschirm sieht.',
     },
   },
   {
     id: 'A3.8', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Get dates in phase', updated: '2026-08-23',
-    q: { en: 'Can I import dates from a Google Sheet instead of Airtable?', de: 'Kann ich Termine aus einem Google Sheet importieren statt aus Airtable?' },
+    q: { en: 'Can I import {{showDates}} from a Google Sheet instead of Airtable?', de: 'Kann ich {{ShowDates}} aus einem Google Sheet importieren statt aus Airtable?' },
     a: {
-      en: 'Yes. Pick Google Sheet as your source on Get running, paste the link to a sheet published to the web as CSV, map its columns to ShowFlow fields, then run the import. Rows missing a city, date, or production are held rather than skipped: link the missing city and run the import again to bring them in.',
-      de: 'Ja. Wähle Google Sheet als Quelle bei Get running, füge den Link zu einer im Web als CSV veröffentlichten Tabelle ein, ordne ihre Spalten den Feldern von ShowFlow zu, und starte dann den Import. Zeilen ohne Stadt, Datum oder Produktion werden zurückgehalten statt übersprungen: verknüpfe die fehlende Stadt und starte den Import erneut, um sie hereinzuholen.',
+      en: 'Yes. Pick Google Sheet as your source on Get running, paste the link to a sheet published to the web as CSV, map its columns to ShowFlow fields, then run the import. Rows missing a city, date, or {{production}} are held rather than skipped: link the missing city and run the import again to bring them in.',
+      de: 'Ja. Wähle Google Sheet als Quelle bei Get running, füge den Link zu einer im Web als CSV veröffentlichten Tabelle ein, ordne ihre Spalten den Feldern von ShowFlow zu, und starte dann den Import. Zeilen ohne Stadt, Datum oder {{Production}} werden zurückgehalten statt übersprungen: verknüpfe die fehlende Stadt und starte den Import erneut, um sie hereinzuholen.',
     },
   },
   {
     id: 'A3.9', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Paperwork phase', updated: '2026-08-23',
-    q: { en: 'Can I set a different fee for one cast on one production?', de: 'Kann ich für einen Cast bei einer Produktion eine andere Gage festlegen?' },
+    q: { en: 'Can I set a different fee for one {{cast}} on one {{production}}?', de: 'Kann ich für einzelne {{casts}} und {{productions}} eine andere Gage festlegen?' },
     a: {
-      en: 'Yes, on Get running under Paperwork. Below your default fee there is a list of fees per production and cast: add one when a cast and production should differ from your default. It applies once an artist in that cast is booked for that production, and only your own fee set on the booking still wins over it. You need at least one cast set up first: the step points you at Rank your casts if you have none yet.',
-      de: 'Ja, bei Get running unter Papierkram. Unter deiner Standardgage gibt es eine Liste mit Gagen pro Produktion und Cast: füge eine hinzu, wenn ein Cast bei einer Produktion von deiner Standardgage abweichen soll. Sie gilt, sobald ein Artist aus diesem Cast für diese Produktion gebucht wird, nur eine eigene Gage, die du direkt an der Buchung gesetzt hast, hat weiterhin Vorrang. Du brauchst zuerst mindestens einen Cast: der Schritt verweist dich auf Deine Besetzungen reihen, falls du noch keinen hast.',
+      en: 'Yes, on Get running under Paperwork. Below your default fee there is a list of fees per {{production}} and {{cast}}: add one when the {{cast}} and {{production}} together should differ from your default. It applies once one {{artist}} in that {{cast}} is booked for that {{production}}, and only your own fee set on the booking still wins over it. You need at least one {{cast}} set up first: the step points you at Rank your {{casts}} if you have none yet.',
+      de: 'Ja, bei Get running unter Papierkram. Unter deiner Standardgage gibt es eine Liste mit Gagen pro {{Production}} und {{Cast}}: füge eine hinzu, wenn eine Kombination von deiner Standardgage abweichen soll. Sie gilt, sobald ein {{artist}} aus dieser Gruppe dort gebucht wird, nur eine eigene Gage, die du direkt an der Buchung gesetzt hast, hat weiterhin Vorrang. Du brauchst zuerst mindestens eine Gruppe: der Schritt verweist dich auf Deine {{Casts}} reihen, falls du noch keine hast.',
     },
   },
   {
     id: 'A3.10', role: 'admin', stage: 3, status: 'new', surface: 'New production, casting breakdown', updated: '2026-08-24',
-    q: { en: 'How do I require a skill that does not exist yet?', de: 'Wie fordere ich einen Skill, den es noch nicht gibt?' },
+    q: { en: 'How do I require {{skills}} that do not exist yet?', de: 'Wie fordere ich {{skills}}, die es noch nicht gibt?' },
     a: {
-      en: 'Create it where you need it. On a production’s casting breakdown each part has a row of skill chips: the ones you already have, plus a New skill chip. Type the name, confirm, and it is created and marked required on that part in one go. You no longer have to add it to an artist first. The same chips appear on the Get running skills step, where you set which of your artists hold it.',
-      de: 'Lege ihn dort an, wo du ihn brauchst. In der Besetzungsaufstellung einer Produktion hat jede Rolle eine Reihe Skill-Chips: die, die du schon hast, plus einen Chip Neuer Skill. Tippe den Namen ein, bestätige, und er wird angelegt und für diese Rolle direkt als erforderlich markiert. Du musst ihn nicht mehr zuerst einem Artist geben. Dieselben Chips findest du im Get running Schritt für Skills, wo du festlegst, welche deiner Artists ihn haben.',
+      en: 'Create them where you need them. On the parts breakdown of each {{production}}, every part has a row of {{skill}} chips: the ones you already have, plus a New {{skill}} chip. Type the name, confirm, and it is created and marked required on that part in one go. You no longer have to add it to one {{artist}} first. The same chips appear on the Get running {{skills}} step, where you set which of your {{artists}} hold it.',
+      de: 'Lege sie dort an, wo du sie brauchst. In der Aufteilung der Positionen deiner {{productions}} hat jede Position eine Reihe Chips für {{skills}}: die, die du schon hast, plus einen Chip für neue {{skills}}. Tippe den Namen ein, bestätige, und sie werden angelegt und für diese Position direkt als erforderlich markiert. Du musst sie nicht mehr zuerst einem {{artist}} geben. Dieselben Chips findest du im Get running Schritt für {{Skills}}, wo du festlegst, welche deiner {{artists}} sie haben.',
     },
   },
   {
     id: 'A3.11', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Set a city on every date', updated: '2026-08-24',
-    q: { en: 'A date has no city. Where do I fix that?', de: 'Ein Termin hat keine Stadt. Wo ändere ich das?' },
+    q: { en: 'One {{showDate}} has no city. Where do I fix that?', de: '{{ShowDates}} ohne Stadt. Wo ändere ich das?' },
     a: {
-      en: 'On the Get running step Set a city on every date. It lists every upcoming date that is still missing one and gives each a city picker, so you can clear them all in one place. The engine only offers a date once it knows the city, which is why the step holds up your first ask until the list is empty. If the city you need is not in the list yet, add it on the production form or in Settings, then Casts and coverage.',
-      de: 'Im Get running Schritt Jedem Termin eine Stadt geben. Er listet jeden kommenden Termin auf, dem noch eine fehlt, und gibt jedem eine Stadtauswahl, du kannst sie also an einer Stelle alle erledigen. Die Engine bietet einen Termin erst an, wenn sie die Stadt kennt, deshalb hält der Schritt deine erste Anfrage auf, bis die Liste leer ist. Fehlt die Stadt noch, lege sie im Produktionsformular an oder in den Einstellungen unter Besetzungen und Abdeckung.',
+      en: 'On the Get running step Set a city on every {{showDate}}. It lists every upcoming {{showDate}} that is still missing one and gives each a city picker, so you can clear them all in one place. The engine only offers {{showDates}} once it knows the city, which is why the step holds up your first ask until the list is empty. If the city you need is not in the list yet, add it on the {{production}} form or in Settings, then {{Casts}} and coverage.',
+      de: 'Im Get running Schritt für die Stadt je {{ShowDate}}. Er listet alle kommenden {{ShowDates}} auf, denen noch eine fehlt, und bietet dort direkt eine Stadtauswahl, du kannst sie also an einer Stelle alle erledigen. Die Engine bietet {{ShowDates}} erst an, wenn sie die Stadt kennt, deshalb hält der Schritt deine erste Anfrage auf, bis die Liste leer ist. Fehlt die Stadt noch, lege sie im Formular für {{Productions}} an oder in den Einstellungen unter {{Casts}} und Abdeckung.',
     },
   },
   {
     id: 'A3.12', role: 'admin', stage: 3, status: 'new', surface: 'Get running board', updated: '2026-08-24',
     q: { en: 'Why did a finished setup step go back to not done?', de: 'Warum ist ein erledigter Setup-Schritt wieder offen?' },
     a: {
-      en: 'Because it now has something real to check. A step counts as done only when the work it names is actually there, never just because nothing contradicts it yet. Set a city on every date, for example, is not done while you have no dates: it turns green once every date you have has one. That is also why a brand new workspace starts at zero rather than part way along, and why adding your first date can move a step back: it gave the step its first thing to look at.',
-      de: 'Weil er jetzt etwas Echtes zu prüfen hat. Ein Schritt gilt erst als erledigt, wenn die Arbeit, die er nennt, wirklich da ist, nie schon deshalb, weil ihm noch nichts widerspricht. Jedem Termin eine Stadt geben ist zum Beispiel nicht erledigt, solange du keine Termine hast: er wird grün, sobald jeder Termin, den du hast, eine hat. Deshalb startet ein neuer Arbeitsbereich auch bei null statt mittendrin, und deshalb kann dein erster Termin einen Schritt zurücksetzen: er hat ihm das erste gegeben, worauf er schauen kann.',
+      en: 'Because it now has something real to check. A step counts as done only when the work it names is actually there, never just because nothing contradicts it yet. Set a city on every {{showDate}}, for example, is not done while you have no {{showDates}}: it turns green once every {{showDate}} you have has one. That is also why a brand new workspace starts at zero rather than part way along, and why adding your first {{showDate}} can move a step back: it gave the step its first thing to look at.',
+      de: 'Weil er jetzt etwas Echtes zu prüfen hat. Ein Schritt gilt erst als erledigt, wenn die Arbeit, die er nennt, wirklich da ist, nie schon deshalb, weil ihm noch nichts widerspricht. Der Schritt für die Stadt je {{ShowDate}} ist zum Beispiel nicht erledigt, solange du keine {{ShowDates}} hast: er wird grün, sobald alle {{ShowDates}}, die du hast, eine haben. Deshalb startet ein neuer Arbeitsbereich auch bei null statt mittendrin, und deshalb können deine ersten {{ShowDates}} einen Schritt zurücksetzen: sie haben ihm das erste gegeben, worauf er schauen kann.',
     },
   },
   {
     id: 'A3.13', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Map your fields step', updated: '2026-08-24',
     q: { en: 'Which Airtable columns do I have to map, and what happens if I skip one?', de: 'Welche Airtable-Spalten muss ich zuordnen, und was passiert, wenn ich eine auslasse?' },
     a: {
-      en: 'The required ones must all be mapped before the sync will run, and the step tells you how many are still missing as a count at the top right. Optional ones, like a third session or the cancellation columns, can wait. One thing the mapping does not cover is the casting breakdown: which parts a production needs and how many people per part is set on the Review your productions step, not here. You can change any mapping later in Settings, Sources.',
-      de: 'Die Pflichtfelder müssen alle zugeordnet sein, bevor der Abgleich läuft, und der Schritt zeigt dir oben rechts als Zähler, wie viele noch fehlen. Optionale wie eine dritte Session oder die Spalten für Absagen können warten. Was die Zuordnung nicht abdeckt, ist die Besetzungsaufstellung: welche Parts eine Produktion braucht und wie viele Personen pro Part, setzt du im Schritt Deine Produktionen prüfen, nicht hier. Jede Zuordnung kannst du später in Einstellungen, Quellen ändern.',
+      en: 'The required ones must all be mapped before the sync will run, and the step tells you how many are still missing as a count at the top right. Optional ones, like a third session or the cancellation columns, can wait. One thing the mapping does not cover is the parts breakdown: which parts each {{production}} needs and how many people per part is set on the Review your {{productions}} step, not here. You can change any mapping later in Settings, Sources.',
+      de: 'Die Pflichtfelder müssen alle zugeordnet sein, bevor der Abgleich läuft, und der Schritt zeigt dir oben rechts als Zähler, wie viele noch fehlen. Optionale wie eine dritte Session oder die Spalten für Absagen können warten. Was die Zuordnung nicht abdeckt, ist die Aufteilung der Positionen: welche Positionen deine {{productions}} brauchen und wie viele Personen pro Position, setzt du im Schritt Deine {{Productions}} prüfen, nicht hier. Jede Zuordnung kannst du später in Einstellungen, Quellen ändern.',
     },
   },
   {
     id: 'A3.14', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Set your letterhead step', updated: '2026-08-24',
-    q: { en: 'What goes on the letterhead, and where does it show up?', de: 'Was steht im Briefkopf, und wo taucht er auf?' },
+    q: { en: 'What goes on the letterhead, and where does it appear?', de: 'Was steht im Briefkopf, und wo taucht er auf?' },
     a: {
-      en: 'Your legal name, your address and an optional registration line. Only the legal name is required. It prints at the top of every contract you issue, with no exceptions, which is why a missing letterhead blocks issuing. Change it any time in Settings, Contracts: the change applies to contracts you issue from then on, and contracts already issued keep the letterhead they went out with.',
-      de: 'Dein rechtlicher Name, deine Adresse und optional eine Registerzeile. Pflicht ist nur der rechtliche Name. Er steht oben auf jedem Engagementvertrag, den du ausstellst, ohne Ausnahme, deshalb blockiert ein fehlender Briefkopf das Ausstellen. Du kannst ihn jederzeit in Einstellungen, Engagementverträge ändern: die Änderung gilt für alles, was du ab dann ausstellst, und bereits ausgestellte Verträge behalten den Briefkopf, mit dem sie rausgegangen sind.',
+      en: 'Your legal name, your address and an optional registration line. Only the legal name is required. It prints at the top of every {{hireOrder}} you issue, with no exceptions, which is why a missing letterhead blocks issuing. Change it any time in Settings, {{HireOrders}}: the change applies to {{hireOrders}} you issue from then on, and {{hireOrders}} already issued keep the letterhead they went out with.',
+      de: 'Dein rechtlicher Name, deine Adresse und optional eine Registerzeile. Pflicht ist nur der rechtliche Name. Er steht oben auf jedem {{hireOrder}}, den du ausstellst, ohne Ausnahme, deshalb blockiert ein fehlender Briefkopf das Ausstellen. Du kannst ihn jederzeit in Einstellungen, {{HireOrders}} ändern: die Änderung gilt für alles, was du ab dann ausstellst, und bereits ausgestellte {{hireOrders}} behalten den Briefkopf, mit dem sie rausgegangen sind.',
     },
   },
   {
     id: 'A3.15', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Write your terms step', updated: '2026-08-24',
-    q: { en: 'Where do the contract terms come from, and can I write my own?', de: 'Woher kommen die Vertragsbedingungen, und kann ich eigene schreiben?' },
+    q: { en: 'Where do the {{hireOrder}} terms come from, and can I write my own?', de: 'Woher kommen die Bedingungen für {{hireOrders}}, und kann ich eigene schreiben?' },
     a: {
-      en: 'ShowFlow ships no clauses of its own, so nothing goes out that you did not put there. The step offers a couple of starting points, a standard engagement set and a shorter guest artist set, and adding one gives your organization its own editable copy rather than a link to ours. Reword it, delete clauses, or keep more than one variant for different kinds of engagement. Terms live in Settings, Contracts once setup is done, and a contract cannot be issued until at least one set exists.',
-      de: 'ShowFlow liefert keine eigenen Klauseln, es geht also nichts raus, was du nicht selbst hinterlegt hast. Der Schritt bietet dir ein paar Startpunkte an, ein Standardset für Engagements und ein kürzeres für Gast-Artists, und beim Hinzufügen bekommt deine Organisation eine eigene, bearbeitbare Kopie, keine Verknüpfung zu unserer. Formuliere um, lösche Klauseln, oder behalte mehrere Varianten für verschiedene Arten von Engagement. Die Bedingungen findest du nach dem Setup in Einstellungen, Engagementverträge, und ohne mindestens ein Set lässt sich kein Vertrag ausstellen.',
+      en: 'ShowFlow ships no clauses of its own, so nothing goes out that you did not put there. The step offers a couple of starting points, a standard engagement set and a shorter guest set, and adding one gives your organization its own editable copy rather than a link to ours. Reword it, delete clauses, or keep more than one variant for different kinds of engagement. Terms live in Settings, {{HireOrders}} once setup is done, and no {{hireOrder}} can be issued until at least one set exists.',
+      de: 'ShowFlow liefert keine eigenen Klauseln, es geht also nichts raus, was du nicht selbst hinterlegt hast. Der Schritt bietet dir ein paar Startpunkte an, ein Standardset für Engagements und ein kürzeres für Gäste, und beim Hinzufügen bekommt deine Organisation eine eigene, bearbeitbare Kopie, keine Verknüpfung zu unserer. Formuliere um, lösche Klauseln, oder behalte mehrere Varianten für verschiedene Arten von Engagement. Die Bedingungen findest du nach dem Setup in Einstellungen, {{HireOrders}}, und ohne mindestens ein Set lässt sich kein {{hireOrder}} ausstellen.',
     },
   },
   {
     id: 'A3.16', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Style your contract document step', updated: '2026-08-24',
-    q: { en: 'How are contract numbers built, and can I change the layout?', de: 'Wie werden Vertragsnummern gebildet, und kann ich das Layout ändern?' },
+    q: { en: 'How are {{hireOrder}} numbers built, and can I change the layout?', de: 'Wie werden Nummern für {{hireOrders}} gebildet, und kann ich das Layout ändern?' },
     a: {
-      en: 'A number is a prefix plus a pattern you write from a small set of tokens: the year, the month, the day, a running sequence, and the cast. The step previews the next number as you type, so you can see the shape before you save it. The layout of the document itself is separate, and the step links straight to the template editor where you can style it and preview the result. Styling applies to every contract you issue from then on. Contracts already issued keep the styling they were issued with.',
-      de: 'Eine Nummer besteht aus einem Präfix und einem Muster, das du aus wenigen Bausteinen zusammensetzt: Jahr, Monat, Tag, eine laufende Nummer und die Besetzung. Der Schritt zeigt dir die nächste Nummer als Vorschau, während du tippst, du siehst die Form also, bevor du speicherst. Das Layout des Dokuments ist davon getrennt, und der Schritt verlinkt direkt in den Vorlagen-Editor, wo du es gestalten und das Ergebnis ansehen kannst. Die Gestaltung gilt für jeden Vertrag, den du ab dann ausstellst. Bereits ausgestellte Verträge behalten ihre.',
+      en: 'A number is a prefix plus a pattern you write from a small set of tokens: the year, the month, the day, a running sequence, and the {{cast}}. The step previews the next number as you type, so you can see the shape before you save it. The layout of the document itself is separate, and the step links straight to the template editor where you can style it and preview the result. Styling applies to every {{hireOrder}} you issue from then on. {{HireOrders}} already issued keep the styling they were issued with.',
+      de: 'Eine Nummer besteht aus einem Präfix und einem Muster, das du aus wenigen Bausteinen zusammensetzt: Jahr, Monat, Tag, laufende Nummer und {{Cast}}. Der Schritt zeigt dir die nächste Nummer als Vorschau, während du tippst, du siehst die Form also, bevor du speicherst. Das Layout des Dokuments ist davon getrennt, und der Schritt verlinkt direkt in den Vorlagen-Editor, wo du es gestalten und das Ergebnis ansehen kannst. Die Gestaltung gilt für jeden {{hireOrder}}, den du ab dann ausstellst. Bereits ausgestellte {{hireOrders}} behalten ihre.',
     },
   },
   {
     id: 'A3.17', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Choose how contracts get signed step', updated: '2026-08-24',
-    q: { en: 'Does the artist sign in the app, or somewhere else?', de: 'Unterschreibt der Artist in der App, oder woanders?' },
+    q: { en: 'Does the {{artist}} sign in the app, or somewhere else?', de: 'Unterschreiben {{Artists}} in der App, oder woanders?' },
     a: {
-      en: 'Whichever you choose. If the artist signs in ShowFlow, they open the issued contract in the app and sign there, and the signature is stored with the contract along with the time and the IP address it came from. If signing happens outside ShowFlow, on paper or through your own e-signature tool, a producer marks the contract countersigned once it is done. Either way you can issue contracts, and you can change the choice at any time. It applies from then on, not retroactively.',
-      de: 'Wie du möchtest. Unterschreibt der Artist in ShowFlow, öffnet er den ausgestellten Vertrag in der App und unterschreibt dort, und die Unterschrift wird zusammen mit Zeitpunkt und IP-Adresse beim Vertrag gespeichert. Läuft das Unterschreiben außerhalb von ShowFlow, auf Papier oder über euer eigenes Signaturtool, markiert ein Producer den Vertrag als gegengezeichnet, sobald es erledigt ist. Ausstellen kannst du so oder so, und du kannst die Wahl jederzeit ändern. Sie gilt ab dann, nicht rückwirkend.',
+      en: 'Whichever you choose. If the {{artist}} signs in ShowFlow, they open the issued {{hireOrder}} in the app and sign there, and the signature is stored with the {{hireOrder}} along with the time and the IP address it came from. If signing happens outside ShowFlow, on paper or through your own e-signature tool, {{roleProducer}} marks the {{hireOrder}} countersigned once it is done. Either way you can issue {{hireOrders}}, and you can change the choice at any time. It applies from then on, not retroactively.',
+      de: 'Wie du möchtest. Unterschreiben {{Artists}} in ShowFlow, öffnen sie den ausgestellten {{hireOrder}} in der App und unterschreiben dort, und die Unterschrift wird zusammen mit Zeitpunkt und IP-Adresse beim {{hireOrder}} gespeichert. Läuft das Unterschreiben außerhalb von ShowFlow, auf Papier oder über euer eigenes Signaturtool, markiert das {{roleProducer}} den {{hireOrder}} als gegengezeichnet, sobald es erledigt ist. Ausstellen kannst du so oder so, und du kannst die Wahl jederzeit ändern. Sie gilt ab dann, nicht rückwirkend.',
     },
   },
   {
     id: 'A4.1', role: 'admin', stage: 4, status: 'new', surface: 'Notifications', updated: '2026-08-14',
     q: { en: 'Why does clicking a notification do nothing?', de: 'Warum passiert nichts, wenn ich auf eine Benachrichtigung klicke?' },
     a: {
-      en: 'It does something now. Notifications open the date, contract, or page they are about, as long as your role and your organization’s modules can actually reach it.',
-      de: 'Jetzt passiert etwas. Benachrichtigungen öffnen den Termin, den Engagementvertrag oder die Seite, um die es geht, solange deine Rolle und die Module deiner Organisation da wirklich hinkommen.',
+      en: 'It does something now. Notifications open the {{showDate}}, {{hireOrder}}, or page they are about, as long as your role and your organization’s modules can actually reach it.',
+      de: 'Jetzt passiert etwas. Benachrichtigungen öffnen, worum es geht: {{ShowDate}}, {{HireOrder}} oder Seite, solange deine Rolle und die Module deiner Organisation da wirklich hinkommen.',
     },
   },
   {
     id: 'A4.2', role: 'admin', stage: 4, status: 'new', surface: 'Sync-held email · Settings, Sources', updated: '2026-08-23',
-    q: { en: 'Did the Airtable sync work? Why are dates missing?', de: 'Hat der Airtable-Sync funktioniert? Warum fehlen Termine?' },
+    q: { en: 'Did the Airtable sync work? Why are {{showDates}} missing?', de: 'Hat der Airtable-Sync funktioniert? Warum fehlen {{ShowDates}}?' },
     a: {
-      en: 'A held sync now emails you as well as posting in app, once per affected set rather than once per record, and points at Settings, Sources. There the Overview tab lists every held record under "Needs your attention", grouped by cause with a one click fix, and the Activity tab shows the full run history. Held records are never dropped: fix the cause and they import on the next run.',
+      en: 'A held sync now emails you as well as posting in app, once per affected set rather than once per record, and points at Settings, Sources. There the Overview tab lists every held record under "Needs your attention", grouped by cause with a one click fix, and the Activity tab carries the full run history. Held records are never dropped: fix the cause and they import on the next run.',
       de: 'Ein zurückgehaltener Sync schickt dir jetzt zusätzlich zur In-App-Meldung eine E-Mail, einmal pro betroffenem Set statt einmal pro Datensatz, und verweist auf Einstellungen, Quellen. Dort listet der Tab Überblick jeden zurückgehaltenen Datensatz unter "Braucht deine Aufmerksamkeit", nach Ursache gruppiert und mit einer Korrektur per Klick, und der Tab Aktivität zeigt die vollständige Lauf-Historie. Zurückgehaltene Datensätze gehen nie verloren: Behebe die Ursache, dann kommen sie beim nächsten Lauf rein.',
     },
   },
@@ -269,23 +269,23 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'A4.5', role: 'admin', stage: 4, status: 'ok', surface: 'Settings, How this org works · Help center', updated: '2026-08-18',
     q: { en: 'What runs automatically, and what still needs a person?', de: 'Was läuft automatisch, und was braucht noch einen Menschen?' },
     a: {
-      en: 'Settings, How this org works is a read-only list of the rules currently in effect (booking flow, offer timing, cast coverage, paperwork), each one showing who set it and when. It is there from day one, and once your Get running board is complete, its own How this org works button lands you on the same page. The Help center explains how those rules play out.',
-      de: 'Einstellungen, Wie diese Organisation funktioniert ist eine schreibgeschützte Liste der Regeln, die gerade gelten (Booking Flow, Angebotszeitpunkt, Besetzungsabdeckung, Papierkram), jede mit Angabe, wer sie wann festgelegt hat. Das gibt es von Anfang an, und sobald dein Get running Board fertig ist, führt dessen eigener Wie diese Organisation funktioniert Button auf dieselbe Seite. Das Hilfe-Center erklärt, wie sich diese Regeln auswirken.',
+      en: 'Settings, How this org works is a read-only list of the rules currently in effect (booking flow, offer timing, {{cast}} coverage, paperwork), each one showing who set it and when. It is there from day one, and once your Get running board is complete, its own How this org works button lands you on the same page. The Help center explains how those rules play out.',
+      de: 'Einstellungen, Wie diese Organisation funktioniert ist eine schreibgeschützte Liste der Regeln, die gerade gelten (Booking Flow, Angebotszeitpunkt, Abdeckung der {{casts}}, Papierkram), jede mit Angabe, wer sie wann festgelegt hat. Das gibt es von Anfang an, und sobald dein Get running Board fertig ist, führt dessen eigener Wie diese Organisation funktioniert Button auf dieselbe Seite. Das Hilfe-Center erklärt, wie sich diese Regeln auswirken.',
     },
   },
   {
     id: 'A4.6', role: 'admin', stage: 4, status: 'ok', surface: 'Dashboard queue', updated: '2026-08-14',
     q: { en: 'What is waiting on me today?', de: 'Was wartet heute auf mich?' },
     a: {
-      en: 'The dashboard queue leads with it, including how many artists are waiting on a confirm from you.',
-      de: 'Die Dashboard-Queue führt genau damit, samt der Zahl der Artists, die auf eine Bestätigung von dir warten.',
+      en: 'The dashboard queue leads with it, including how many {{artists}} are waiting on a confirm from you.',
+      de: 'Die Dashboard-Queue führt genau damit, samt der Zahl der {{artists}}, die auf eine Bestätigung von dir warten.',
     },
   },
   {
     id: 'A5.1', role: 'admin', stage: 5, status: 'ok', surface: 'Suspended workspace screen', updated: '2026-08-14',
     q: { en: 'Why is my organization suspended, and who do I contact?', de: 'Warum ist meine Organisation gesperrt, und an wen wende ich mich?' },
     a: {
-      en: 'The screen confirms your data is safe and tells you to contact your platform administrator. The contact line is built and ready, but no support address is configured yet, so the live screen still shows no address. It is a platform-level value, so once it is set it switches on everywhere.',
+      en: 'The screen confirms your data is safe and tells you to contact your platform administrator. The contact line is built and ready, but no support address is configured yet, so the live screen still has no address. It is a platform-level value, so once it is set it switches on everywhere.',
       de: 'Der Screen bestätigt, dass deine Daten sicher sind, und sagt dir, du sollst deinen Plattform-Administrator kontaktieren. Die Kontaktzeile ist gebaut und bereit, aber es ist noch keine Support-Adresse hinterlegt, daher zeigt der Live-Screen weiter keine Adresse. Es ist ein Wert auf Plattform-Ebene, sobald er gesetzt ist, schaltet er sich überall frei.',
     },
   },
@@ -311,16 +311,16 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'P0.1', role: 'producer', stage: 0, status: 'ok', surface: 'Invitation email', updated: '2026-08-14',
     q: { en: 'What is ShowFlow, and what is my part in it?', de: 'Was ist ShowFlow, und was ist meine Rolle darin?' },
     a: {
-      en: 'Your invitation says it plainly: your role is Production Team. You plan productions and show dates, and book artists into them.',
-      de: 'Deine Einladung sagt es klar: deine Rolle ist Produktionsteam. Du planst Produktionen und Show-Termine und buchst Artists dafür.',
+      en: 'Your invitation says it plainly: your role is {{roleProducer}}. You plan {{productions}} and {{showDates}}, and book {{artists}} into them.',
+      de: 'Deine Einladung sagt es klar: deine Rolle ist {{roleProducer}}. Du planst {{Productions}} und {{ShowDates}} und buchst {{artists}} dafür.',
     },
   },
   {
     id: 'P0.2', role: 'producer', stage: 0, status: 'new', surface: 'Get running board · Help center', updated: '2026-08-18',
     q: { en: 'What is the difference between me and an admin?', de: 'Was ist der Unterschied zwischen mir und einem Admin?' },
     a: {
-      en: 'Broadly: you run the work, an admin sets the rules. The Production Team note at the bottom of Get running carries a short line on what Production Team covers, with a link to what each role can do in the Help center.',
-      de: 'Grob gesagt: du machst die Arbeit, ein Admin setzt die Regeln. Die Production-Team-Notiz unten auf Get running trägt eine kurze Zeile dazu, was das Produktionsteam abdeckt, mit einem Link darauf, was jede Rolle darf, im Hilfe-Center.',
+      en: 'Broadly: you run the work, an admin sets the rules. The {{roleProducer}} note at the bottom of Get running carries a short line on what {{roleProducer}} covers, with a link to what each role can do in the Help center.',
+      de: 'Grob gesagt: du machst die Arbeit, ein Admin setzt die Regeln. Die Notiz für das {{roleProducer}} unten auf Get running trägt eine kurze Zeile dazu, was das {{roleProducer}} abdeckt, mit einem Link darauf, was jede Rolle darf, im Hilfe-Center.',
     },
   },
   {
@@ -335,8 +335,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'P2.2', role: 'producer', stage: 2, status: 'ok', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'Why is everything empty? Is it me, or the organization?', de: 'Warum ist alles leer? Liegt es an mir, oder an der Organisation?' },
     a: {
-      en: 'It is the organization. Get running says so directly at the top: it is there so you know why Dates looks empty, not so you can fix all of it.',
-      de: 'Es liegt an der Organisation. Get running sagt das oben direkt: es ist da, damit du weißt, warum Termine leer aussieht, nicht damit du alles davon lösen kannst.',
+      en: 'It is the organization. Get running says so directly at the top: it is there so you know why {{ShowDates}} looks empty, not so you can fix all of it.',
+      de: 'Es liegt an der Organisation. Get running sagt das oben direkt: es ist da, damit du weißt, warum {{ShowDates}} leer aussieht, nicht damit du alles davon lösen kannst.',
     },
   },
   {
@@ -351,77 +351,77 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'P2.4', role: 'producer', stage: 2, status: 'ok', surface: 'Get running board', updated: '2026-08-18',
     q: { en: 'What can I do while I wait?', de: 'Was kann ich tun, während ich warte?' },
     a: {
-      en: 'Plan dates now, ask later. Nothing stops you adding dates and sessions before the booking rules exist, and Get running never blocks you from doing that either.',
-      de: 'Termine jetzt planen, später anfragen. Nichts hält dich davon ab, Termine und Sessions anzulegen, bevor die Buchungsregeln existieren, und auch Get running hält dich nicht davon ab.',
+      en: 'Plan {{showDates}} now, ask later. Nothing stops you adding {{showDates}} and sessions before the booking rules exist, and Get running never blocks you from doing that either.',
+      de: '{{ShowDates}} jetzt planen, später anfragen. Nichts hält dich davon ab, {{ShowDates}} und Sessions anzulegen, bevor die Buchungsregeln existieren, und auch Get running hält dich nicht davon ab.',
     },
   },
   {
     id: 'P3.1', role: 'producer', stage: 3, status: 'new', surface: 'New show date dialog', updated: '2026-08-14',
-    q: { en: 'Where do dates come from? Can I add one by hand?', de: 'Woher kommen die Termine? Kann ich einen von Hand anlegen?' },
+    q: { en: 'Where do {{showDates}} come from? Can I add one by hand?', de: 'Woher kommen die {{showDates}}? Kann ich sie von Hand anlegen?' },
     a: {
-      en: 'Both. Dates sync in from Airtable and you can create one manually. The create dialog now says so, and holds true whether or not Airtable is configured for your organization.',
-      de: 'Beides. Termine kommen per Sync aus Airtable, und du kannst einen manuell anlegen. Der Anlegen-Dialog sagt das jetzt, und zwar egal, ob Airtable für deine Organisation eingerichtet ist oder nicht.',
+      en: 'Both. {{ShowDates}} sync in from Airtable and you can create one manually. The create dialog now says so, and holds true whether or not Airtable is configured for your organization.',
+      de: 'Beides. {{ShowDates}} kommen per Sync aus Airtable, und du kannst sie auch manuell anlegen. Der Anlegen-Dialog sagt das jetzt, und zwar egal, ob Airtable für deine Organisation eingerichtet ist oder nicht.',
     },
   },
   {
     id: 'P3.2', role: 'producer', stage: 3, status: 'new', surface: 'Show date cockpit, cast list', updated: '2026-08-14',
     q: { en: 'What does confirming actually do? Is it final?', de: 'Was macht das Bestätigen eigentlich? Ist es endgültig?' },
     a: {
-      en: 'A line under the confirm control now says what the artist gets and when, read from your organization’s flow, and it only promises an email if your organization actually sends one. The confirmation toast names the artist you confirmed.',
-      de: 'Eine Zeile unter dem Bestätigen-Button sagt jetzt, was der Artist bekommt und wann, gelesen aus dem Flow deiner Organisation, und verspricht nur dann eine E-Mail, wenn deine Organisation auch wirklich eine schickt. Der Bestätigungs-Toast nennt den Artist, den du bestätigt hast.',
+      en: 'A line under the confirm control now says what the {{artist}} gets and when, read from your organization’s flow, and it only promises an email if your organization actually sends one. The confirmation toast names the {{artist}} you confirmed.',
+      de: 'Eine Zeile unter dem Bestätigen-Button sagt jetzt, was {{Artists}} bekommen und wann, gelesen aus dem Flow deiner Organisation, und verspricht nur dann eine E-Mail, wenn deine Organisation auch wirklich eine schickt. Der Bestätigungs-Toast nennt die Person, die du bestätigt hast.',
     },
   },
   {
     id: 'P3.3', role: 'producer', stage: 3, status: 'new', surface: 'Show date cockpit · bookings list', updated: '2026-08-14',
     q: { en: 'What does "Said yes, waiting on you" mean? Why can I not just book someone?', de: 'Was heißt "Hat zugesagt, wartet auf dich"? Warum kann ich jemanden nicht einfach buchen?' },
     a: {
-      en: 'It means the artist said yes and the part is claimed, waiting on your last word. That status only exists for organizations that keep the last word: where an organization does not, a yes books the artist straight away instead, and this status never appears. The Accepted and Said yes, waiting on you badges carry that explanation on hover, on the surface where the status appears.',
-      de: 'Es heißt, der Artist hat zugesagt und die Position ist belegt, wartet aber auf dein letztes Wort. Diesen Status gibt es nur bei Organisationen, die sich das letzte Wort vorbehalten: behält eine Organisation es sich nicht vor, bucht ein Ja den Artist sofort, und dieser Status taucht nie auf. Die Badges Angenommen und Hat zugesagt, wartet auf dich tragen diese Erklärung beim Hovern, genau dort, wo der Status erscheint.',
+      en: 'It means the {{artist}} said yes and the spot is claimed, waiting on your last word. That status only exists for organizations that keep the last word: where an organization does not, a yes books the {{artist}} straight away instead, and this status never appears. The Accepted and Said yes, waiting on you badges carry that explanation on hover, on the surface where the status appears.',
+      de: 'Es heißt, die Zusage ist da und die Position ist belegt, wartet aber auf dein letztes Wort. Diesen Status gibt es nur bei Organisationen, die sich das letzte Wort vorbehalten: behält eine Organisation es sich nicht vor, bucht ein Ja sofort, und dieser Status taucht nie auf. Die Badges Angenommen und Hat zugesagt, wartet auf dich tragen diese Erklärung beim Hovern, genau dort, wo der Status erscheint.',
     },
   },
   {
     id: 'P3.4', role: 'producer', stage: 3, status: 'new', surface: 'Show date cockpit, tier picker', updated: '2026-08-14',
-    q: { en: 'What is "who this date asks", and when do I open it up further?', de: 'Was bedeutet "wer bei diesem Termin gefragt wird", und wann öffne ich es für mehr Leute?' },
+    q: { en: 'What is "who this {{showDate}} asks", and when do I open it up further?', de: 'Was bedeutet "wer hier gefragt wird", und wann öffne ich es für mehr Leute?' },
     a: {
-      en: 'Each date asks casts in order: one group first, then the next if it still needs people. Opening it up further widens who gets asked to the next group down. The picker for this now carries that note plus a link to how casts and this order work.',
-      de: 'Jeder Termin fragt Besetzungen der Reihe nach: zuerst eine Gruppe, dann die nächste, wenn noch Leute fehlen. Öffnest du es für mehr Leute, weitet sich der Kreis der Gefragten auf die nächste Gruppe aus. Der Auswähler dafür trägt jetzt diese Notiz plus einen Link dazu, wie Besetzungen und diese Reihenfolge funktionieren.',
+      en: 'Each {{showDate}} asks {{casts}} in order: one group first, then the next if it still needs people. Opening it up further widens who gets asked to the next group down. The picker for this now carries that note plus a link to how {{casts}} and this order work.',
+      de: 'Alle {{ShowDates}} fragen {{casts}} der Reihe nach: zuerst eine Gruppe, dann die nächste, wenn noch Leute fehlen. Öffnest du es für mehr Leute, weitet sich der Kreis der Gefragten auf die nächste Gruppe aus. Der Auswähler dafür trägt jetzt diese Notiz plus einen Link dazu, wie {{casts}} und diese Reihenfolge funktionieren.',
     },
   },
   {
     id: 'P3.5', role: 'producer', stage: 3, status: 'new', surface: 'Show date cockpit, book list', updated: '2026-08-14',
-    q: { en: 'What if I need an artist outside who can be asked?', de: 'Was, wenn ich einen Artist brauche, der außerhalb von "wer gefragt werden kann" liegt?' },
+    q: { en: 'What if I need one {{artist}} outside who can be asked?', de: 'Was, wenn ich jemanden brauche, der außerhalb von "wer gefragt werden kann" liegt?' },
     a: {
-      en: 'Book them directly from the who can be asked list. When a date carries no cast limits at all, a line above the list now says the list is unrestricted, instead of leaving you to infer it.',
-      de: 'Buch sie direkt aus der Liste wer gefragt werden kann. Trägt ein Termin gar keine Besetzungs-Grenzen, sagt eine Zeile über der Liste jetzt, dass die Liste unbeschränkt ist, statt es dich raten zu lassen.',
+      en: 'Book them directly from the who can be asked list. When {{showDates}} carry no {{cast}} limits at all, a line above the list now says the list is unrestricted, instead of leaving you to infer it.',
+      de: 'Buch sie direkt aus der Liste wer gefragt werden kann. Tragen {{ShowDates}} gar keine Grenzen für {{casts}}, sagt eine Zeile über der Liste jetzt, dass die Liste unbeschränkt ist, statt es dich raten zu lassen.',
     },
   },
   {
     id: 'P3.6', role: 'producer', stage: 3, status: 'new', surface: 'Show date cockpit', updated: '2026-08-14',
-    q: { en: 'When do artists hear about what I just did?', de: 'Wann erfahren Artists von dem, was ich gerade gemacht habe?' },
+    q: { en: 'When do {{artists}} hear about what I just did?', de: 'Wann erfahren {{Artists}} von dem, was ich gerade gemacht habe?' },
     a: {
-      en: 'At the point of action, on the two actions that never said: confirming and cancelling both now name who hears and when. Opening the date up to the next cast already narrated its own delivery.',
-      de: 'Im Moment der Aktion, bei den zwei Aktionen, die es nie gesagt haben: Bestätigen und Absagen nennen jetzt beide, wer wann erfährt. Den Termin für die nächste Besetzung zu öffnen hat seine Zustellung schon vorher erzählt.',
+      en: 'At the point of action, on the two actions that never said: confirming and cancelling both now name who hears and when. Opening the {{showDate}} up to the next {{cast}} already narrated its own delivery.',
+      de: 'Im Moment der Aktion, bei den zwei Aktionen, die es nie gesagt haben: Bestätigen und Absagen nennen jetzt beide, wer wann erfährt. Das Öffnen für die nächste Gruppe hat seine Zustellung schon vorher erzählt.',
     },
   },
   {
     id: 'P4.1', role: 'producer', stage: 4, status: 'ok', surface: 'Dashboard queue', updated: '2026-08-14',
     q: { en: 'What needs me today?', de: 'Was braucht mich heute?' },
     a: {
-      en: 'The dashboard queue splits it into waiting on you, expiring today, and dates still short of people.',
-      de: 'Die Dashboard-Queue teilt es auf in wartet auf dich, läuft heute ab, und Termine, denen noch Leute fehlen.',
+      en: 'The dashboard queue splits it into waiting on you, expiring today, and {{showDates}} still short of people.',
+      de: 'Die Dashboard-Queue teilt es auf in wartet auf dich, läuft heute ab, und {{ShowDates}}, denen noch Leute fehlen.',
     },
   },
   {
     id: 'P4.2', role: 'producer', stage: 4, status: 'new', surface: 'Tier at risk notification and email', updated: '2026-08-14',
-    q: { en: 'A date is at risk. What am I supposed to do about it?', de: 'Ein Termin ist gefährdet. Was soll ich dagegen tun?' },
+    q: { en: 'One {{showDate}} is at risk. What am I supposed to do about it?', de: '{{ShowDates}} sind gefährdet. Was soll ich dagegen tun?' },
     a: {
-      en: 'The message now suggests two recoveries: opening it up to the next cast, or direct booking, instead of only stating the maths. There is also an email for it, sent once per newly at-risk date and recipient rather than on every run.',
-      de: 'Die Meldung schlägt jetzt zwei Auswege vor: den Termin für die nächste Besetzung öffnen, oder direkt buchen, statt nur die Rechnung aufzumachen. Es gibt auch eine E-Mail dazu, verschickt einmal pro neu gefährdetem Termin und Empfänger statt bei jedem Durchlauf.',
+      en: 'The message now suggests two recoveries: opening it up to the next {{cast}}, or direct booking, instead of only stating the maths. There is also an email for it, sent once per newly at-risk {{showDate}} and recipient rather than on every run.',
+      de: 'Die Meldung schlägt jetzt zwei Auswege vor: für die nächste Gruppe öffnen, oder direkt buchen, statt nur die Rechnung aufzumachen. Es gibt auch eine E-Mail dazu, verschickt einmal je Fall und Empfänger statt bei jedem Durchlauf.',
     },
   },
   {
     id: 'P4.3', role: 'producer', stage: 4, status: 'ok', surface: 'Notifications · bookings', updated: '2026-08-14',
-    q: { en: 'An understudy got promoted. Do I need to do anything?', de: 'Eine Zweitbesetzung ist nachgerückt. Muss ich etwas tun?' },
+    q: { en: 'One {{understudy}} got promoted. Do I need to do anything?', de: 'Jemand ist nachgerückt. Muss ich etwas tun?' },
     a: {
       en: 'Only confirm. The notification lands in your confirm queue and opens bookings when you click it.',
       de: 'Nur bestätigen. Die Benachrichtigung landet in deiner Bestätigungs-Queue und öffnet die Buchungen, wenn du sie anklickst.',
@@ -431,53 +431,53 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'P4.4', role: 'producer', stage: 4, status: 'new', surface: 'Bookings, Needs you lens', updated: '2026-08-15',
     q: { en: 'What is Needs you, and why do I land there first now?', de: 'Was ist Needs you, und warum lande ich jetzt zuerst dort?' },
     a: {
-      en: 'Dates now opens on Needs you: everything that actually needs you today, grouped into waiting on you and expiring today, dates at risk, contracts ready to issue, and cancellations the cast has not heard about yet. Switch to Month, Week, Season, or Agenda for the full calendar.',
-      de: 'Termine öffnet jetzt auf Needs you: alles, was heute wirklich von dir gebraucht wird, gruppiert in wartet auf dich und läuft heute ab, gefährdete Termine, ausstellbereite Engagementverträge, und Absagen, über die die Besetzung noch nicht informiert wurde. Wechsle zu Month, Week, Season oder Agenda für den vollständigen Kalender.',
+      en: '{{ShowDates}} now opens on Needs you: everything that actually needs you today, grouped into waiting on you and expiring today, {{showDates}} at risk, {{hireOrders}} ready to issue, and cancellations the {{cast}} has not heard about yet. Switch to Month, Week, Season, or Agenda for the full calendar.',
+      de: '{{ShowDates}} öffnet jetzt auf Needs you: alles, was heute wirklich von dir gebraucht wird, gruppiert in wartet auf dich und läuft heute ab, gefährdete {{ShowDates}}, ausstellbereite {{hireOrders}}, und Absagen, über die die Gruppe noch nicht informiert wurde. Wechsle zu Month, Week, Season oder Agenda für den vollständigen Kalender.',
     },
   },
   {
     id: 'P4.5', role: 'producer', stage: 4, status: 'new', surface: 'Hire order, void dialog', updated: '2026-08-14',
-    q: { en: 'Can I undo an issued contract?', de: 'Kann ich einen ausgestellten Engagementvertrag rückgängig machen?' },
+    q: { en: 'Can I undo an issued {{hireOrder}}?', de: 'Kann ich einen ausgestellten {{hireOrder}} rückgängig machen?' },
     a: {
-      en: 'Not by editing it. An issued contract is frozen. The void dialog now points at the real path: void this one, then issue a fresh contract.',
-      de: 'Nicht durchs Bearbeiten. Ein ausgestellter Engagementvertrag ist eingefroren. Der Ungültig-Dialog weist jetzt auf den richtigen Weg: diesen ungültig machen, dann einen neuen ausstellen.',
+      en: 'Not by editing it. An issued {{hireOrder}} is frozen. The void dialog now points at the real path: void this one, then issue a fresh {{hireOrder}}.',
+      de: 'Nicht durchs Bearbeiten. Ein ausgestellter {{hireOrder}} ist eingefroren. Der Ungültig-Dialog weist jetzt auf den richtigen Weg: diesen ungültig machen, dann einen neuen ausstellen.',
     },
   },
   {
     id: 'P4.6', role: 'producer', stage: 4, status: 'new', surface: 'Hire order timeline', updated: '2026-08-14',
-    q: { en: 'Did the artist see the contract I sent?', de: 'Hat der Artist den Engagementvertrag gesehen, den ich geschickt habe?' },
+    q: { en: 'Did the {{artist}} see the {{hireOrder}} I sent?', de: 'Haben {{Artists}} den {{hireOrder}} gesehen, den ich geschickt habe?' },
     a: {
-      en: 'The contract timeline now shows a Seen step, reached when the linked artist opens the contract in the app. It is deliberately not email open tracking.',
-      de: 'Die Vertrags-Timeline zeigt jetzt einen Gesehen-Schritt, erreicht, sobald der verknüpfte Artist den Engagementvertrag in der App öffnet. Das ist bewusst kein E-Mail-Öffnungs-Tracking.',
+      en: 'The {{hireOrder}} timeline now has a Seen step, reached when the linked {{artist}} opens the {{hireOrder}} in the app. It is deliberately not email open tracking.',
+      de: 'Die Timeline zum {{hireOrder}} zeigt jetzt einen Gesehen-Schritt, erreicht, sobald die verknüpfte Person den {{hireOrder}} in der App öffnet. Das ist bewusst kein E-Mail-Öffnungs-Tracking.',
     },
   },
   {
     id: 'P4.7', role: 'producer', stage: 4, status: 'new', surface: 'Needs you queue, cancelled card', updated: '2026-08-15',
-    q: { en: 'A cancelled date sits in Needs you with a Notify cast button. Did cancelling not already tell the cast?', de: 'Ein abgesagter Termin steht mit einem Notify-cast-Button in Needs you. Wurde die Besetzung nicht schon beim Absagen informiert?' },
+    q: { en: 'A cancelled {{showDate}} sits in Needs you with a Notify {{cast}} button. Did cancelling not already tell the {{cast}}?', de: 'Abgesagte {{ShowDates}} stehen mit einem Notify-cast-Button in Needs you. Wurde die Gruppe nicht schon beim Absagen informiert?' },
     a: {
-      en: 'Not yet: the only automatic notice is the evening Daily send at 20:00, so a date you cancelled during the day sits here until then. Notify cast sends it immediately and clears the item.',
-      de: 'Noch nicht: Die einzige automatische Benachrichtigung ist der abendliche Tägliche Versand um 20 Uhr, also bleibt ein tagsüber abgesagter Termin bis dahin hier stehen. Notify cast verschickt sie sofort und erledigt den Eintrag.',
+      en: 'Not yet: the only automatic notice is the evening Daily send at 20:00, so {{showDates}} you cancelled during the day sit here until then. Notify {{cast}} sends it immediately and clears the item.',
+      de: 'Noch nicht: Die einzige automatische Benachrichtigung ist der abendliche Tägliche Versand um 20 Uhr, also bleiben tagsüber abgesagte {{ShowDates}} bis dahin hier stehen. Notify cast verschickt sie sofort und erledigt den Eintrag.',
     },
   },
   {
     id: 'P4.8', role: 'producer', stage: 4, status: 'new', surface: 'Bookings, Month and Season lens, selection bar', updated: '2026-08-15',
-    q: { en: 'Can I confirm holds or generate hire orders for several dates at once?', de: 'Kann ich Vormerkungen für mehrere Termine gleichzeitig bestätigen oder Engagementverträge erstellen?' },
+    q: { en: 'Can I confirm holds or generate {{hireOrders}} for several {{showDates}} at once?', de: 'Kann ich Vormerkungen für mehrere {{ShowDates}} gleichzeitig bestätigen oder {{HireOrders}} erstellen?' },
     a: {
-      en: 'Yes, in Month or Season: drag across a span of dates, or click one date and shift-click another, to select a range. A bar appears at the bottom with Confirm holds and Generate hire orders, each applied to every selected date, and Clear to drop the selection. Both still respect your permissions and only act on dates where the action makes sense.',
-      de: 'Ja, in Month oder Season: Ziehe über mehrere Termine, oder klicke einen Termin an und dann mit Shift auf einen weiteren, um einen Zeitraum auszuwählen. Unten erscheint eine Leiste mit Confirm holds und Generate hire orders, beide werden auf jeden ausgewählten Termin angewendet, und Clear hebt die Auswahl auf. Beide respektieren weiterhin deine Berechtigungen und wirken nur auf Termine, wo die Aktion sinnvoll ist.',
+      en: 'Yes, in Month or Season: drag across a span of {{showDates}}, or click one {{showDate}} and shift-click another, to select a range. A bar appears at the bottom with Confirm holds and Generate {{hireOrders}}, each applied to every selected {{showDate}}, and Clear to drop the selection. Both still respect your permissions and only act on {{showDates}} where the action makes sense.',
+      de: 'Ja, in Month oder Season: Ziehe über mehrere {{ShowDates}}, oder klicke einen Eintrag an und dann mit Shift auf einen weiteren, um einen Zeitraum auszuwählen. Unten erscheint eine Leiste mit Confirm holds und Generate hire orders, beide werden auf alle ausgewählten {{ShowDates}} angewendet, und Clear hebt die Auswahl auf. Beide respektieren weiterhin deine Berechtigungen und wirken nur auf {{ShowDates}}, wo die Aktion sinnvoll ist.',
     },
   },
   {
     id: 'P5.1', role: 'producer', stage: 5, status: 'new', surface: 'Show date cockpit, cancel dialog', updated: '2026-08-14',
-    q: { en: 'A confirmed artist pulled out. What happens if I cancel them?', de: 'Ein bestätigter Artist ist abgesprungen. Was passiert, wenn ich ihn absage?' },
+    q: { en: 'A confirmed {{artist}} pulled out. What happens if I cancel them?', de: 'Jemand mit Buchung ist abgesprungen. Was passiert, wenn ich die Buchung absage?' },
     a: {
-      en: 'Cancelling one artist now asks first and previews the consequence, including whether an understudy will be promoted automatically under your flow. Cancelling a whole date is a separate action and is unchanged.',
-      de: 'Einen einzelnen Artist abzusagen fragt jetzt erst nach und zeigt die Folge vorab, samt der Frage, ob unter deinem Flow automatisch eine Zweitbesetzung nachrückt. Einen ganzen Termin abzusagen ist eine eigene Aktion und bleibt unverändert.',
+      en: 'Cancelling one {{artist}} now asks first and previews the consequence, including whether one {{understudy}} will be promoted automatically under your flow. Cancelling a whole {{showDate}} is a separate action and is unchanged.',
+      de: 'Eine einzelne Buchung abzusagen fragt jetzt erst nach und zeigt die Folge vorab, samt der Frage, ob unter deinem Flow automatisch nachbesetzt wird. {{ShowDates}} ganz abzusagen ist eine eigene Aktion und bleibt unverändert.',
     },
   },
   {
     id: 'P5.2', role: 'producer', stage: 5, status: 'new', surface: 'Cancel dialog', updated: '2026-08-14',
-    q: { en: 'I cancelled a date. Who gets told, and when?', de: 'Ich habe einen Termin abgesagt. Wer erfährt es, und wann?' },
+    q: { en: 'I cancelled one {{showDate}}. Who gets told, and when?', de: 'Ich habe etwas abgesagt. Wer erfährt es, und wann?' },
     a: {
       en: 'The cancel dialog uses the same who-hears line as schedule edits, and stays honest about what your organization has actually switched on.',
       de: 'Der Absage-Dialog nutzt dieselbe Wer-erfährt-es-Zeile wie Zeitplan-Änderungen und bleibt ehrlich dabei, was deine Organisation tatsächlich aktiviert hat.',
@@ -497,8 +497,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R0.1', role: 'artist', stage: 0, status: 'ok', surface: 'Invitation email', updated: '2026-08-14',
     q: { en: 'What is ShowFlow? Is this spam?', de: 'Was ist ShowFlow? Ist das Spam?' },
     a: {
-      en: 'It is the tool your organization books with. Every invitation now opens with the same line: ShowFlow is where the organization plans its productions and books the artists for them.',
-      de: 'Es ist das Tool, mit dem deine Organisation bucht. Jede Einladung beginnt jetzt mit demselben Satz: ShowFlow ist der Ort, an dem die Organisation ihre Produktionen plant und die Artists dafür bucht.',
+      en: 'It is the tool your organization books with. Every invitation now opens with the same line: ShowFlow is where the organization plans its {{productions}} and books the {{artists}} for them.',
+      de: 'Es ist das Tool, mit dem deine Organisation bucht. Jede Einladung beginnt jetzt mit demselben Satz: ShowFlow ist der Ort, an dem die Organisation ihre {{productions}} plant und die {{artists}} dafür bucht.',
     },
   },
   {
@@ -513,32 +513,32 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R1.1', role: 'artist', stage: 1, status: 'ok', surface: 'Accept invite · dashboard', updated: '2026-08-14',
     q: { en: 'Did they link me to the right profile?', de: 'Haben sie mich mit dem richtigen Profil verknüpft?' },
     a: {
-      en: 'Your account is linked to your artist record by email automatically. If that fails you are told so honestly, and the dashboard says an admin can link it. You cannot link it yourself.',
-      de: 'Dein Konto wird automatisch per E-Mail mit deinem Artist-Datensatz verknüpft. Klappt das nicht, wird es dir ehrlich gesagt, und das Dashboard sagt, dass ein Admin die Verknüpfung herstellen kann. Selbst verknüpfen kannst du sie nicht.',
+      en: 'Your account is linked to your {{artist}} record by email automatically. If that fails you are told so honestly, and the dashboard says an admin can link it. You cannot link it yourself.',
+      de: 'Dein Konto wird automatisch per E-Mail mit deinem {{Artist}}-Datensatz verknüpft. Klappt das nicht, wird es dir ehrlich gesagt, und das Dashboard sagt, dass ein Admin die Verknüpfung herstellen kann. Selbst verknüpfen kannst du sie nicht.',
     },
   },
   {
     id: 'R2.1', role: 'artist', stage: 2, status: 'new', surface: 'Availability page', updated: '2026-08-14',
     q: { en: 'How long do I really have to answer? And when does the daily send arrive?', de: 'Wie lange habe ich wirklich Zeit zum Antworten? Und wann kommt der tägliche Versand?' },
     a: {
-      en: 'Both are now shown as actual numbers, read from your organization’s settings rather than described as concepts. The line only appears for organizations that send you asks, so a directly booked artist is never promised a window that does not exist.',
-      de: 'Beide werden jetzt als echte Zahlen gezeigt, gelesen aus den Einstellungen deiner Organisation, statt nur als Konzepte beschrieben. Die Zeile erscheint nur bei Organisationen, die dir Anfragen schicken, ein direkt gebuchter Artist bekommt also nie eine Frist versprochen, die es gar nicht gibt.',
+      en: 'Both are now shown as actual numbers, read from your organization’s settings rather than described as concepts. The line only appears for organizations that send you asks, so directly booked {{artists}} are never promised a window that does not exist.',
+      de: 'Beide werden jetzt als echte Zahlen gezeigt, gelesen aus den Einstellungen deiner Organisation, statt nur als Konzepte beschrieben. Die Zeile erscheint nur bei Organisationen, die dir Anfragen schicken, direkt gebuchte {{artists}} bekommen also nie eine Frist versprochen, die es gar nicht gibt.',
     },
   },
   {
     id: 'R2.2', role: 'artist', stage: 2, status: 'ok', surface: 'Artist dashboard', updated: '2026-08-14',
     q: { en: 'What is this page, and what do I do first?', de: 'Was ist diese Seite, und was mache ich zuerst?' },
     a: {
-      en: 'Block the dates you cannot play first, so you only get asked about dates that work. About 2 minutes, and none of it blocks anything.',
-      de: 'Sperre zuerst die Termine, an denen du nicht spielen kannst, damit du nur zu Terminen gefragt wirst, die passen. Etwa 2 Minuten, und nichts davon hält irgendetwas auf.',
+      en: 'Block the {{showDates}} you cannot take on first, so you only get asked about {{showDates}} that work. About 2 minutes, and none of it blocks anything.',
+      de: 'Sperre zuerst die {{ShowDates}}, an denen du nicht kannst, damit du nur gefragt wirst, wenn es passt. Etwa 2 Minuten, und nichts davon hält irgendetwas auf.',
     },
   },
   {
     id: 'R3.1', role: 'artist', stage: 3, status: 'new', surface: 'Accept offer', updated: '2026-08-14',
     q: { en: 'I accepted. Am I booked now?', de: 'Ich habe angenommen. Bin ich jetzt gebucht?' },
     a: {
-      en: 'Usually not yet. Accepting shows the status Said yes, waiting on your production team: they still have the last word before it becomes a booking. Where your organization does not keep the last word, accepting books you immediately instead, and the status reads Said yes.',
-      de: 'Meist noch nicht. Das Annehmen zeigt den Status Zugesagt, wartet auf dein Produktionsteam: es hat noch das letzte Wort, bevor daraus eine Buchung wird. Behält deine Organisation sich das letzte Wort nicht vor, bucht dich das Annehmen sofort, und der Status heißt nur Zugesagt.',
+      en: 'Usually not yet. Accepting sets the status Said yes, waiting on your {{roleProducer}}: they still have the last word before it becomes a booking. Where your organization does not keep the last word, accepting books you immediately instead, and the status reads Said yes.',
+      de: 'Meist noch nicht. Das Annehmen zeigt den Status Zugesagt, wartet auf dein {{roleProducer}}: es hat noch das letzte Wort, bevor daraus eine Buchung wird. Behält deine Organisation sich das letzte Wort nicht vor, bucht dich das Annehmen sofort, und der Status heißt nur Zugesagt.',
     },
   },
   {
@@ -553,93 +553,93 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R3.3', role: 'artist', stage: 3, status: 'ok', surface: 'Expiry reminder email · availability', updated: '2026-08-14',
     q: { en: 'What happens if I simply do not answer?', de: 'Was passiert, wenn ich einfach nicht antworte?' },
     a: {
-      en: 'The ask expires when your answer-by time closes and passes to the next cast. You get a reminder a day before that happens.',
-      de: 'Die Anfrage läuft ab, wenn deine Antwortfrist endet, und geht an die nächste Besetzung. Einen Tag bevor das passiert, bekommst du eine Erinnerung.',
+      en: 'The ask expires when your answer-by time closes and passes to the next {{cast}}. You get a reminder a day before that happens.',
+      de: 'Die Anfrage läuft ab, wenn deine Antwortfrist endet, und geht an die nächste Gruppe. Einen Tag bevor das passiert, bekommst du eine Erinnerung.',
     },
   },
   {
     id: 'R3.4', role: 'artist', stage: 3, status: 'new', surface: 'Availability calendar', updated: '2026-08-16',
-    q: { en: 'Why am I not asked about this date?', de: 'Warum werde ich zu diesem Termin nicht gefragt?' },
+    q: { en: 'Why am I not asked about this {{showDate}}?', de: 'Warum werde ich hier nicht gefragt?' },
     a: {
-      en: 'Dates you are asked about come from the casts you are in and the skills those casts require. You can still open any day: if you are not asked about anything that day, the detail panel says so.',
-      de: 'Termine, zu denen du gefragt wirst, ergeben sich aus den Besetzungen, in denen du bist, und den Skills, die diese Besetzungen verlangen. Du kannst trotzdem jeden Tag öffnen: Wirst du an dem Tag zu nichts gefragt, sagt dir das Detailfeld das.',
+      en: '{{ShowDates}} you are asked about come from the {{casts}} you are in and the {{skills}} those {{casts}} require. You can still open any day: if you are not asked about anything that day, the detail panel says so.',
+      de: '{{ShowDates}}, zu denen du gefragt wirst, ergeben sich aus den {{casts}}, in denen du bist, und den {{skills}}, die sie verlangen. Du kannst trotzdem jeden Tag öffnen: Wirst du an dem Tag zu nichts gefragt, sagt dir das Detailfeld das.',
     },
   },
   {
     id: 'R3.5', role: 'artist', stage: 3, status: 'new', surface: 'Availability calendar, empty state', updated: '2026-08-16',
-    q: { en: 'Why do I see no dates at all?', de: 'Warum sehe ich überhaupt keine Termine?' },
+    q: { en: 'Why do I see no {{showDates}} at all?', de: 'Warum sehe ich überhaupt keine {{ShowDates}}?' },
     a: {
-      en: 'You have not been asked about anything yet. Dates appear once you are added to a cast that can be asked for them and you hold the required skills. The All dates lens then lists every one.',
-      de: 'Du wurdest noch zu nichts gefragt. Termine erscheinen, sobald du einer Besetzung hinzugefügt wirst, die dafür gefragt werden kann, und du die nötigen Skills hast. Die Lens Alle Termine listet dann jeden auf.',
+      en: 'You have not been asked about anything yet. {{ShowDates}} appear once you are added to one {{cast}} that can be asked for them and you hold the required {{skills}}. The All {{showDates}} lens then lists every one.',
+      de: 'Du wurdest noch zu nichts gefragt. {{ShowDates}} erscheinen, sobald du einer Gruppe hinzugefügt wirst, die dafür gefragt werden kann, und du die nötigen {{skills}} hast. Die Lens Alle {{ShowDates}} listet dann alle auf.',
     },
   },
   {
     id: 'R3.6', role: 'artist', stage: 3, status: 'new', surface: 'Block date', updated: '2026-08-14',
-    q: { en: 'Does blocking a date affect bookings I already have?', de: 'Wirkt sich das Sperren eines Termins auf Buchungen aus, die ich schon habe?' },
+    q: { en: 'Does blocking {{showDates}} affect bookings I already have?', de: 'Wirkt sich das Sperren auf Buchungen aus, die ich schon habe?' },
     a: {
-      en: 'No. Blocking marks the date not free and stops future asks for it, and dates you are already booked for are not affected. The block dialog now says the second half too.',
-      de: 'Nein. Das Sperren markiert den Termin als nicht frei und stoppt künftige Anfragen dafür, und Termine, für die du schon gebucht bist, bleiben unberührt. Der Sperr-Dialog sagt jetzt auch die zweite Hälfte.',
+      en: 'No. Blocking marks the {{showDate}} not free and stops future asks for it, and {{showDates}} you are already booked for are not affected. The block dialog now says the second half too.',
+      de: 'Nein. Das Sperren markiert {{ShowDates}} als nicht frei und stoppt künftige Anfragen dafür, und {{ShowDates}}, für die du schon gebucht bist, bleiben unberührt. Der Sperr-Dialog sagt jetzt auch die zweite Hälfte.',
     },
   },
   {
     id: 'R4.2', role: 'artist', stage: 4, status: 'new', surface: 'Artist dashboard, meter', updated: '2026-08-14',
     q: { en: 'What does my response rate count, and does it matter?', de: 'Was zählt meine Antwortquote, und ist sie wichtig?' },
     a: {
-      en: 'It counts dates you said yes to or were booked for, out of dates you were asked about. It is just for you. Nobody is scored on it. Organizations that book directly see a booked-dates meter instead, with its own definition.',
-      de: 'Die Quote zählt Termine, bei denen du zugesagt hast oder für die du gebucht wurdest, im Verhältnis zu den Terminen, zu denen du gefragt wurdest. Nur du siehst sie, niemand wird danach bewertet. Organisationen, die direkt buchen, sehen stattdessen einen Zähler für gebuchte Termine, mit eigener Definition.',
+      en: 'It counts {{showDates}} you said yes to or were booked for, out of {{showDates}} you were asked about. It is just for you. Nobody is scored on it. Organizations that book directly see a meter of booked {{showDates}} instead, with its own definition.',
+      de: 'Die Quote zählt {{ShowDates}}, bei denen du zugesagt hast oder für die du gebucht wurdest, im Verhältnis zu allen, zu denen du gefragt wurdest. Nur du siehst sie, niemand wird danach bewertet. Organisationen, die direkt buchen, sehen stattdessen einen Zähler für gebuchte {{ShowDates}}, mit eigener Definition.',
     },
   },
   {
     id: 'R4.3', role: 'artist', stage: 4, status: 'ok', surface: 'Chat panel', updated: '2026-08-14',
-    q: { en: 'Who can see this chat? Why is there no chat for a date I was asked about?', de: 'Wer kann diesen Chat sehen? Warum gibt es keinen Chat für einen Termin, zu dem ich gefragt wurde?' },
+    q: { en: 'Who can see this chat? Why is there no chat for one {{showDate}} I was asked about?', de: 'Wer kann diesen Chat sehen? Warum gibt es keinen Chat, wenn ich nur gefragt wurde?' },
     a: {
-      en: 'Chat is only available to the production team, admins, and artists who are Booked or have said yes for that date. Being asked is not enough on its own.',
-      de: 'Chat gibt es nur für das Produktionsteam, Admins und Artists, die für diesen Termin gebucht sind oder zugesagt haben. Nur gefragt worden zu sein reicht nicht.',
+      en: 'Chat is only available to {{roleProducer}}, admins, and {{artists}} who are Booked or have said yes for that {{showDate}}. Being asked is not enough on its own.',
+      de: 'Chat gibt es nur für das {{roleProducer}}, Admins und {{artists}}, die dafür gebucht sind oder zugesagt haben. Nur gefragt worden zu sein reicht nicht.',
     },
   },
   {
     id: 'R4.4', role: 'artist', stage: 4, status: 'new', surface: 'Profile · artist record', updated: '2026-08-14',
     q: { en: 'Who in the organization can see my phone number and email?', de: 'Wer in der Organisation kann meine Telefonnummer und E-Mail sehen?' },
     a: {
-      en: 'Admins and the production team see the contact details on your artist record, which is what they book you from. Your profile now says so, and the production-team view carries the matching note.',
-      de: 'Admins und das Produktionsteam sehen die Kontaktdaten auf deinem Artist-Datensatz, denn darüber buchen sie dich. Dein Profil sagt das jetzt, und die Ansicht für das Produktionsteam trägt die passende Notiz.',
+      en: 'Admins and {{roleProducer}} see the contact details on your {{artist}} record, which is what they book you from. Your profile now says so, and the {{roleProducer}} view carries the matching note.',
+      de: 'Admins und das {{roleProducer}} sehen die Kontaktdaten auf deinem {{Artist}}-Datensatz, denn darüber buchen sie dich. Dein Profil sagt das jetzt, und die Ansicht für das {{roleProducer}} trägt die passende Notiz.',
     },
   },
   {
     id: 'R4.5', role: 'artist', stage: 4, status: 'new', surface: 'Sign hire order', updated: '2026-08-14',
-    q: { en: 'What am I agreeing to when I sign a contract?', de: 'Wozu stimme ich zu, wenn ich einen Engagementvertrag unterschreibe?' },
+    q: { en: 'What am I agreeing to when I sign the {{hireOrder}}?', de: 'Wozu stimme ich zu, wenn ich einen {{hireOrder}} unterschreibe?' },
     a: {
-      en: 'The fee, dates, and terms shown on that contract. Adding your signature completes it, and the final signed PDF is emailed to you. There is no later step where the organization signs after you.',
-      de: 'Der Gage, den Terminen und den Konditionen, die auf diesem Engagementvertrag stehen. Deine Unterschrift schließt ihn ab, und das fertige unterschriebene PDF wird dir per E-Mail geschickt. Es gibt keinen späteren Schritt, in dem die Organisation nach dir unterschreibt.',
+      en: 'The fee, {{showDates}}, and terms shown on that {{hireOrder}}. Adding your signature completes it, and the final signed PDF is emailed to you. There is no later step where the organization signs after you.',
+      de: 'Allem, was auf diesem {{hireOrder}} steht: Gage, {{ShowDates}}, Konditionen. Deine Unterschrift schließt ihn ab, und das fertige unterschriebene PDF wird dir per E-Mail geschickt. Es gibt keinen späteren Schritt, in dem die Organisation nach dir unterschreibt.',
     },
   },
   {
     id: 'R4.6', role: 'artist', stage: 4, status: 'new', surface: 'Artist dashboard, paperwork card', updated: '2026-08-14',
     q: { en: 'Where is my fee?', de: 'Wo ist meine Gage?' },
     a: {
-      en: 'On the contract for the booking. The paperwork card now appears even when you have none yet, so you learn the feature exists before your first contract arrives. Organizations that do not use paperwork still show nothing.',
-      de: 'Auf dem Engagementvertrag für die Buchung. Die Papierkram-Karte erscheint jetzt auch dann, wenn du noch keinen hast, damit du weißt, dass es die Funktion gibt, bevor dein erster Engagementvertrag ankommt. Organisationen, die keinen Papierkram nutzen, zeigen weiterhin nichts.',
+      en: 'On the {{hireOrder}} for the booking. The paperwork card now appears even when you have none yet, so you learn the feature exists before your first {{hireOrder}} arrives. Organizations that do not use paperwork still see nothing.',
+      de: 'Auf dem {{hireOrder}} für die Buchung. Die Papierkram-Karte erscheint jetzt auch dann, wenn du noch keinen hast, damit du weißt, dass es die Funktion gibt, bevor dein erster {{hireOrder}} ankommt. Organisationen, die keinen Papierkram nutzen, zeigen weiterhin nichts.',
     },
   },
   {
     id: 'R5.1', role: 'artist', stage: 5, status: 'new', surface: 'My bookings', updated: '2026-08-14',
     q: { en: 'I am confirmed but cannot make it. How do I cancel?', de: 'Ich bin bestätigt, kann aber nicht. Wie sage ich ab?' },
     a: {
-      en: 'Not from here. There is no artist-side cancel for a confirmed booking, and your bookings now say what to do instead: message your production team in the date’s chat.',
-      de: 'Nicht von hier aus. Es gibt keine Absage von Artist-Seite für eine bestätigte Buchung, und deine Buchungen sagen jetzt, was du stattdessen tust: schreib deinem Produktionsteam im Chat zum Termin.',
+      en: 'Not from here. There is no cancel on the {{artist}} side for a confirmed booking, and your bookings now say what to do instead: message your {{roleProducer}} in the chat for that {{showDate}}.',
+      de: 'Nicht von hier aus. Es gibt keine Absage von deiner Seite für eine bestätigte Buchung, und deine Buchungen sagen jetzt, was du stattdessen tust: schreib deinem {{roleProducer}} im passenden Chat.',
     },
   },
   {
     id: 'R5.2', role: 'artist', stage: 5, status: 'ok', surface: 'Notifications', updated: '2026-08-14',
-    q: { en: 'I was promoted from understudy. What does that mean for me?', de: 'Ich bin von der Zweitbesetzung nachgerückt. Was heißt das für mich?' },
+    q: { en: 'I was promoted from {{understudy}}. What does that mean for me?', de: 'Ich bin nachgerückt. Was heißt das für mich?' },
     a: {
-      en: 'You are in the main cast for that date and expected to play it. The notification says it plainly when it happens.',
-      de: 'Du bist für diesen Termin im Hauptcast und wirst erwartet, ihn zu spielen. Die Benachrichtigung sagt das klar, wenn es passiert.',
+      en: 'You are in the main {{cast}} for that {{showDate}} and expected to take it on. The notification says it plainly when it happens.',
+      de: 'Du bist auf einer Hauptposition und wirst dort erwartet. Die Benachrichtigung sagt das klar, wenn es passiert.',
     },
   },
   {
     id: 'R5.3', role: 'artist', stage: 5, status: 'new', surface: 'Confirmation digest email', updated: '2026-08-14',
-    q: { en: 'The show moved. Where do I check what is current?', de: 'Die Show wurde verschoben. Wo prüfe ich, was aktuell gilt?' },
+    q: { en: 'Something moved in the schedule. Where do I check what is current?', de: 'Etwas im Zeitplan wurde verschoben. Wo prüfe ich, was aktuell gilt?' },
     a: {
       en: 'In the app, and the confirmation digest email now gets you there: it carries a view your bookings button, which it was the only template missing.',
       de: 'In der App, und die Bestätigungs-Tagesübersicht per E-Mail bringt dich jetzt dorthin: sie trägt einen Button Deine Buchungen ansehen, der als einziges Template noch gefehlt hat.',
@@ -649,8 +649,8 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R5.4', role: 'artist', stage: 5, status: 'new', surface: 'Profile, delete account', updated: '2026-08-14',
     q: { en: 'What happens to my things if I delete my account?', de: 'Was passiert mit meinen Sachen, wenn ich mein Konto lösche?' },
     a: {
-      en: 'Your bookings history stays with the organization in de-identified form. The copy now also names your open asks, and, where paperwork is in use, that issued contracts are kept as the record of an engagement. It no longer claims your details are removed from documents that keep them.',
-      de: 'Deine Buchungshistorie bleibt bei der Organisation, in anonymisierter Form. Der Text nennt jetzt auch deine offenen Anfragen, und, wo Papierkram im Einsatz ist, dass ausgestellte Engagementverträge als Nachweis eines Engagements aufbewahrt werden. Er behauptet nicht mehr, deine Daten würden aus Dokumenten entfernt, die sie behalten.',
+      en: 'Your bookings history stays with the organization in de-identified form. The copy now also names your open asks, and, where paperwork is in use, that issued {{hireOrders}} are kept as the record of an engagement. It no longer claims your details are removed from documents that keep them.',
+      de: 'Deine Buchungshistorie bleibt bei der Organisation, in anonymisierter Form. Der Text nennt jetzt auch deine offenen Anfragen, und, wo Papierkram im Einsatz ist, dass ausgestellte {{hireOrders}} als Nachweis eines Engagements aufbewahrt werden. Er behauptet nicht mehr, deine Daten würden aus Dokumenten entfernt, die sie behalten.',
     },
   },
   {
@@ -673,32 +673,32 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     id: 'R5.7', role: 'artist', stage: 5, status: 'new', surface: 'Account · what reaches you', updated: '2026-08-18',
     q: { en: 'Why do I not see switches for booking activity or at-risk notifications?', de: 'Warum sehe ich keine Schalter für Buchungsaktivität oder Risiko-Benachrichtigungen?' },
     a: {
-      en: 'Those two are never sent to artists in the first place, so your account no longer shows them as a choice to make. They stay visible to admins and the production team, whose notification matrix keeps all six categories.',
-      de: 'Diese beiden werden grundsätzlich nie an Artists gesendet, deshalb zeigt dein Konto sie nicht mehr als Wahlmöglichkeit. Für Admins und das Production Team bleiben sie sichtbar, deren Benachrichtigungsmatrix behält alle sechs Kategorien.',
+      en: 'Those two are never sent to {{artists}} in the first place, so your account no longer lists them as a choice to make. They stay visible to admins and {{roleProducer}}, whose notification matrix keeps all six categories.',
+      de: 'Diese beiden werden grundsätzlich nie an {{artists}} gesendet, deshalb zeigt dein Konto sie nicht mehr als Wahlmöglichkeit. Für Admins und das {{roleProducer}} bleiben sie sichtbar, deren Benachrichtigungsmatrix behält alle sechs Kategorien.',
     },
   },
   {
     id: 'R5.8', role: 'artist', stage: 5, status: 'new', surface: 'Account · Reference sidebar', updated: '2026-08-18',
     q: { en: 'What is the Reference panel on my Account page?', de: 'Was ist das Referenz-Panel auf meiner Kontoseite?' },
     a: {
-      en: 'Three shortcuts, not settings: how booking works here, how many dates you currently have blocked, and a link to message your production team. Nothing there changes anything, it just points at where the real controls live.',
-      de: 'Drei Abkürzungen, keine Einstellungen: wie das Buchen hier funktioniert, wie viele Termine du gerade gesperrt hast, und ein Link, um deinem Produktionsteam zu schreiben. Nichts davon ändert etwas, es zeigt nur, wo die eigentlichen Einstellungen liegen.',
+      en: 'Three shortcuts, not settings: how booking works here, how many {{showDates}} you currently have blocked, and a link to message your {{roleProducer}}. Nothing there changes anything, it just points at where the real controls live.',
+      de: 'Drei Abkürzungen, keine Einstellungen: wie das Buchen hier funktioniert, wie viele {{ShowDates}} du gerade gesperrt hast, und ein Link, um deinem {{roleProducer}} zu schreiben. Nichts davon ändert etwas, es zeigt nur, wo die eigentlichen Einstellungen liegen.',
     },
   },
   {
     id: 'R5.9', role: 'artist', stage: 5, status: 'new', surface: 'Availability · Your setup', updated: '2026-08-18',
     q: { en: 'What is the "Your setup, 0 of 1 done" card on Availability?', de: 'Was ist die Karte "Dein Setup, 0 von 1 erledigt" bei der Verfügbarkeit?' },
     a: {
-      en: 'It tracks one step: block the dates you cannot play. An empty calendar is a valid answer, you are not required to block anything. The step retires the moment you block your first date.',
-      de: 'Sie verfolgt einen Schritt: sperre die Termine, die du nicht spielen kannst. Ein leerer Kalender ist eine gültige Antwort, du musst nichts sperren. Der Schritt gilt als erledigt, sobald du deinen ersten Termin sperrst.',
+      en: 'It tracks one step: block the {{showDates}} you cannot take on. An empty calendar is a valid answer, you are not required to block anything. The step retires the moment you block your first {{showDate}}.',
+      de: 'Sie verfolgt einen Schritt: sperre die {{ShowDates}}, an denen du nicht kannst. Ein leerer Kalender ist eine gültige Antwort, du musst nichts sperren. Der Schritt gilt als erledigt, sobald du zum ersten Mal etwas sperrst.',
     },
   },
   {
     id: 'R5.10', role: 'artist', stage: 5, status: 'new', surface: 'Availability · How booking works here', updated: '2026-08-18',
     q: { en: 'Why do the booking rules on Availability look different for me, and where do the ask time and answer-by window come from?', de: 'Warum sehen die Buchungsregeln bei der Verfügbarkeit bei mir anders aus, und woher kommen die Anfragezeit und die Antwortfrist?' },
     a: {
-      en: 'The "How booking works here" card is read-only and set by your organization, it is not something you configure. If your organization books artists directly, there is no answer-by window to show, since there is nothing to accept.',
-      de: 'Die Karte "So funktioniert das Buchen hier" ist nur lesbar und wird von deiner Organisation festgelegt, du stellst sie nicht selbst ein. Wenn deine Organisation Artists direkt bucht, gibt es keine Antwortfrist zu zeigen, weil es nichts anzunehmen gibt.',
+      en: 'The "How booking works here" card is read-only and set by your organization, it is not something you configure. If your organization books {{artists}} directly, there is no answer-by window to display, since there is nothing to accept.',
+      de: 'Die Karte "So funktioniert das Buchen hier" ist nur lesbar und wird von deiner Organisation festgelegt, du stellst sie nicht selbst ein. Wenn deine Organisation {{artists}} direkt bucht, gibt es keine Antwortfrist zu zeigen, weil es nichts anzunehmen gibt.',
     },
   },
 ] as const;

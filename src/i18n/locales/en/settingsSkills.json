@@ -1,65 +1,65 @@
 {
   "header": {
     "eyebrow": "ORGANIZATION · CATALOG",
-    "title": "Skills",
-    "description": "Skills gate who can be asked or booked. Productions require them per part; artists hold them on their profile."
+    "title": "{{Skills}}",
+    "description": "{{Skills}} gate who can be asked or booked. {{Productions}} require them per role; {{artists}} hold them on their profile."
   },
   "toolbar": {
-    "searchPlaceholder": "Find a skill",
-    "newSkill": "New skill"
+    "searchPlaceholder": "Find {{skills}}",
+    "newSkill": "New {{skill}}"
   },
   "table": {
-    "headSkill": "Skill",
-    "headArtists": "Artists",
+    "headSkill": "{{Skill}}",
+    "headArtists": "{{Artists}}",
     "headRequiredBy": "Required by",
-    "emptyNoSkills": "No skills yet.",
-    "emptyNoMatch": "No skills match your search."
+    "emptyNoSkills": "No {{skills}} yet.",
+    "emptyNoMatch": "No {{skills}} match your search."
   },
   "requiredBy": {
     "hidden": "Hidden from pickers",
     "notRequired": "Not required yet",
-    "productions_one": "{{count}} production",
-    "productions_other": "{{count}} productions",
-    "upcomingDates_one": "{{count}} upcoming date",
-    "upcomingDates_other": "{{count}} upcoming dates"
+    "productions_one": "{{count}} {{production}}",
+    "productions_other": "{{count}} {{productions}}",
+    "upcomingDates_one": "{{count}} upcoming {{showDate}}",
+    "upcomingDates_other": "{{count}} upcoming {{showDates}}"
   },
   "row": {
     "archivedBadge": "Archived",
-    "blockedTooltipProductions": "In use by {{count}} productions, archive it instead",
-    "blockedTooltipDates": "Required by upcoming dates, archive it instead",
-    "safeToDeleteTooltip": "Not required by any production, safe to delete",
+    "blockedTooltipProductions": "In use by {{count}} {{productions}}, archive it instead",
+    "blockedTooltipDates": "Required by upcoming {{showDates}}, archive it instead",
+    "safeToDeleteTooltip": "Not required by any {{production}}, safe to delete",
     "restore": "Restore",
     "rename": "Rename",
     "archive": "Archive",
     "deleteLabel": "Delete {{name}}"
   },
-  "footerNote": "Archiving hides a skill from every picker and keeps it on the artists who hold it. Deleting is only offered while no production requires it. New workspaces are seeded from the platform starter list.",
+  "footerNote": "Archiving hides the {{skill}} from every picker and keeps it on the {{artists}} who hold it. Deleting is only offered while no {{production}} requires it. New workspaces are seeded from the platform starter list.",
   "newDialog": {
-    "title": "New skill",
-    "description": "Skills are shared across the organization's productions and artist profiles.",
-    "nameLabel": "Skill name",
+    "title": "New {{skill}}",
+    "description": "{{Skills}} are shared across the organization's {{productions}} and {{artist}} profiles.",
+    "nameLabel": "{{Skill}} name",
     "cancel": "Cancel",
-    "submit": "Create skill"
+    "submit": "Create {{skill}}"
   },
   "renameDialog": {
     "title": "Rename {{name}}",
-    "description": "This name is shown everywhere the skill appears.",
+    "description": "This name is shown everywhere the {{skill}} appears.",
     "cancel": "Cancel",
     "submit": "Save name"
   },
   "toast": {
-    "added": "Skill added",
-    "addFailed": "Failed to add skill",
-    "renamed": "Skill renamed",
-    "renameFailed": "Failed to rename skill",
-    "archived": "Skill archived",
-    "archiveFailed": "Failed to archive skill",
-    "restored": "Skill restored",
-    "restoreFailed": "Failed to restore skill",
-    "deleted": "Skill deleted",
-    "deleteFailed": "Failed to delete skill",
-    "collisionArchived": "A skill named \"{{name}}\" is archived. Use Restore to bring it back.",
-    "collisionExists": "A skill named \"{{name}}\" already exists.",
-    "collisionMaybeArchived": "A skill named \"{{name}}\" already exists. It may be archived: check Settings > Skills."
+    "added": "{{Skill}} added",
+    "addFailed": "Failed to add {{skill}}",
+    "renamed": "{{Skill}} renamed",
+    "renameFailed": "Failed to rename {{skill}}",
+    "archived": "{{Skill}} archived",
+    "archiveFailed": "Failed to archive {{skill}}",
+    "restored": "{{Skill}} restored",
+    "restoreFailed": "Failed to restore {{skill}}",
+    "deleted": "{{Skill}} deleted",
+    "deleteFailed": "Failed to delete {{skill}}",
+    "collisionArchived": "The {{skill}} \"{{name}}\" is archived. Use Restore to bring it back.",
+    "collisionExists": "The {{skill}} \"{{name}}\" already exists.",
+    "collisionMaybeArchived": "The {{skill}} \"{{name}}\" already exists. It may be archived: check Settings > {{Skills}}."
   }
 }

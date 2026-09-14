@@ -115,20 +115,20 @@ describe("ProductionsStep", () => {
     expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
     expect(screen.getByText(/add at least one date to continue/i)).toBeInTheDocument();
     // The slots reason is the wrong one here and must not also render.
-    expect(screen.queryByText(/set at least one casting breakdown/i)).toBeNull();
+    expect(screen.queryByText(/set at least one parts breakdown/i)).toBeNull();
   });
 
-  it("clicking Set casting breakdown opens the PartsEditorSheet for that production", async () => {
+  it("clicking Set parts breakdown opens the PartsEditorSheet for that production", async () => {
     renderStep();
 
-    const setPartsBtn = screen.getByRole("button", { name: /set casting breakdown/i });
+    const setPartsBtn = screen.getByRole("button", { name: /set parts breakdown/i });
     fireEvent.click(setPartsBtn);
 
     // Coarse, name-free wait: the sheet has rendered before we do any name-scoped query.
     await waitFor(() => {
       expect(screen.getByDisplayValue("Lead")).toBeInTheDocument();
     });
-    expect(screen.getByRole("heading", { name: /casting breakdown for hamlet/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /parts breakdown for hamlet/i })).toBeInTheDocument();
   });
 
   it("shows the empty state prompting to add the first production when there are none", () => {
@@ -164,9 +164,9 @@ describe("ProductionsStep", () => {
     mockUseCan({ manage_productions: false, manage_show_dates: false, edit_scheduling: false });
     renderStep();
 
-    expect(screen.queryByRole("button", { name: /^add a production$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^add a new production$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^add a date$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /set casting breakdown/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /set parts breakdown/i })).not.toBeInTheDocument();
   });
 
   it("gates Add a date on manage_show_dates independently of manage_productions", () => {
@@ -176,7 +176,7 @@ describe("ProductionsStep", () => {
     mockUseCan({ manage_show_dates: false });
     renderStep();
 
-    expect(screen.getByRole("button", { name: /^add a production$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^add a new production$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^add a date$/i })).not.toBeInTheDocument();
   });
 });
@@ -195,20 +195,20 @@ describe("ProductionsStep, the add-a-production action", () => {
     showsQuery.mockReturnValue({ data: undefined, isLoading: false, isError: true });
     renderStep();
 
-    expect(screen.getByRole("button", { name: /add a production/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add a new production/i })).toBeInTheDocument();
   });
 
   it("keeps the header action while the list read is still loading", () => {
     showsQuery.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     renderStep();
 
-    expect(screen.getByRole("button", { name: /add a production/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add a new production/i })).toBeInTheDocument();
   });
 
   it("offers the action exactly once on a settled, empty list", () => {
     showsQuery.mockReturnValue({ data: [], isLoading: false, isError: false });
     renderStep();
 
-    expect(screen.getAllByRole("button", { name: /add a production/i })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /add a new production/i })).toHaveLength(1);
   });
 });

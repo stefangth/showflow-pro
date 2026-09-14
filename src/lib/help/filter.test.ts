@@ -11,12 +11,20 @@ describe('help filter', () => {
     expect(selectItems('admin', 'new', '').every((i) => i.status === 'new')).toBe(true);
   });
 
-  it('search matches an English product term (regardless of the reader\'s language)', () => {
-    expect(selectItems('producer', 'all', 'hire order').length).toBeGreaterThan(0);
+  // The searched noun is a vocabulary placeholder in the copy ({{hireOrder}}), so search
+  // has to match the DISPLAYED text: under the production kind {{hireOrder}} renders
+  // "contract" (EN) / "Engagementvertrag" (DE), and both must find the same items.
+  it('search matches the displayed English product noun', () => {
+    expect(selectItems('producer', 'all', 'contract', 'production').length).toBeGreaterThan(0);
   });
 
-  it('search matches a German term (regardless of the reader\'s language)', () => {
-    expect(selectItems('producer', 'all', 'engagementvertrag').length).toBeGreaterThan(0);
+  it('search matches the displayed German product noun (regardless of the reader\'s language)', () => {
+    expect(selectItems('producer', 'all', 'engagementvertrag', 'production').length).toBeGreaterThan(0);
+  });
+
+  // ...and the staffing kind renders the other vocabulary, so its displayed noun matches too.
+  it('search matches the staffing-kind displayed noun', () => {
+    expect(selectItems('producer', 'all', 'work order', 'staffing').length).toBeGreaterThan(0);
   });
 
   it('groupByStage drops empty stages and preserves order', () => {

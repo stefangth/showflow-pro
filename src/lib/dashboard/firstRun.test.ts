@@ -92,7 +92,7 @@ it("adminTeamStep is a non-gating booking_flow step, done only with a producer",
   // Non-gating: never chips, never counts against canOffer/complete.
   expect(step.block).toBeNull();
   // Carries the shared meta (title/CTA) so any generic consumer renders it.
-  expect(step.title).toBe("Add your production team");
+  expect(step.title).toBe("Add your Production Team");
   expect(step.ctaLabel).toBe("Invite team");
 });
 
@@ -134,7 +134,7 @@ it("composeArtist carries ARTIST_ONBOARDING metadata over booking_flow only", ()
   const r = composeArtist(artistStatus, ARTIST_ONBOARDING, ctx);
   expect(r.steps).toHaveLength(1);
   expect(r.steps.map((s) => s.key)).toEqual(["blockDates"]);
-  expect(r.steps.map((s) => s.title)).toEqual(["Block what you cannot play"]);
+  expect(r.steps.map((s) => s.title)).toEqual(["Block what you cannot take on"]);
   expect(r.steps.every((s) => s.moduleKey === "booking_flow")).toBe(true);
   expect(r.steps.map((s) => s.done)).toEqual([false]);
   expect(r.complete).toBe(false); // mirrors the status

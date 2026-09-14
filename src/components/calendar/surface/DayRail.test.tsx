@@ -216,7 +216,7 @@ describe('DayRail', () => {
         legend={[]}
       />
     );
-    expect(screen.getByTestId('day-rail-secondary')).toHaveTextContent('Message your production team');
+    expect(screen.getByTestId('day-rail-secondary')).toHaveTextContent('Message your Production Team');
   });
 
   it('renders stats rows (dot/label/value)', () => {
@@ -307,7 +307,7 @@ describe('DayRail', () => {
     );
     const header = screen.getByTestId('day-rail-header');
     expect(header).toHaveTextContent('Thu 20 Aug');
-    expect(header).toHaveTextContent('casting');
+    expect(header).toHaveTextContent('filling');
     expect(header).toHaveTextContent('Cirque Noir');
     expect(screen.getByText('This month')).toBeInTheDocument();
 

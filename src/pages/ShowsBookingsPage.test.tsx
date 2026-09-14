@@ -227,7 +227,7 @@ describe("ShowsBookingsPage — empty state on the calendar surface", () => {
   it("shows the empty-state message and no month grid when there are no show dates", async () => {
     showDatesRef.value = [];
     renderWithProviders(<ShowsBookingsPage />);
-    expect(await screen.findByText("No show dates match the current filters.")).toBeInTheDocument();
+    expect(await screen.findByText("No dates match the current filters.")).toBeInTheDocument();
     expect(screen.queryByTestId("month-grid")).not.toBeInTheDocument();
     expect(screen.queryByTestId("calendar-surface")).not.toBeInTheDocument();
   });
@@ -235,7 +235,7 @@ describe("ShowsBookingsPage — empty state on the calendar surface", () => {
   it("v3 off: no finish-setup affordance in the producer header", async () => {
     showDatesRef.value = [];
     renderWithProviders(<ShowsBookingsPage />);
-    await screen.findByText("No show dates match the current filters.");
+    await screen.findByText("No dates match the current filters.");
     expect(screen.queryByRole("link", { name: /finish setup/i })).not.toBeInTheDocument();
   });
 });

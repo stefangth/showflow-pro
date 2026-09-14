@@ -72,7 +72,7 @@ describe("CoveragePanel", () => {
       expect(within(blockedKpi).getByText("1")).toBeInTheDocument();
       const singleKpi = screen.getByText("SINGLE ASK").parentElement!;
       expect(within(singleKpi).getByText("1")).toBeInTheDocument();
-      const overridesKpi = screen.getByText("PRODUCTION OVERRIDES").parentElement!;
+      const overridesKpi = screen.getByText("Production overrides").parentElement!;
       expect(within(overridesKpi).getByText("0")).toBeInTheDocument();
     });
 

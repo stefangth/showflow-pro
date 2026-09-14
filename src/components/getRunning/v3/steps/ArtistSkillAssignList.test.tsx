@@ -133,7 +133,7 @@ describe("ArtistSkillAssignList", () => {
     // 200 rows of chips inside a wizard step is not a usable surface: render a bounded
     // page until the viewer asks for the rest.
     await waitFor(() => expect(screen.getAllByRole("listitem").length).toBe(25));
-    expect(screen.getByRole("button", { name: /show all 200 artists/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /see all 200 artists/i })).toBeInTheDocument();
 
     // A name filter reaches an artist far outside that first page.
     fireEvent.change(screen.getByRole("textbox", { name: /search artists by name/i }), {
@@ -147,7 +147,7 @@ describe("ArtistSkillAssignList", () => {
     seedArtists(Array.from({ length: 40 }, (_, i) => ({ id: `a${i}`, name: `Artist ${i}` })));
     renderList();
 
-    fireEvent.click(await screen.findByRole("button", { name: /show all 40 artists/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /see all 40 artists/i }));
     await waitFor(() => expect(screen.getAllByRole("listitem").length).toBe(40));
   });
 

@@ -19,8 +19,8 @@ const superAdmin: MiniSteps = [
   {
     label: { en: 'Users across orgs', de: 'Nutzer über Orgs' },
     text: {
-      en: 'One directory over every org: memberships, artist links, email changes, suspend, delete.',
-      de: 'Ein Verzeichnis über alle Orgs: Mitgliedschaften, Artist-Verknüpfungen, E-Mail-Änderungen, Sperren, Löschen.',
+      en: 'One directory over every org: memberships, {{artist}} links, email changes, suspend, delete.',
+      de: 'Ein Verzeichnis über alle Orgs: Mitgliedschaften, {{Artist}}-Verknüpfungen, E-Mail-Änderungen, Sperren, Löschen.',
     },
   },
   {

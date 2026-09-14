@@ -151,7 +151,7 @@ describe("acceptConsequenceNote", () => {
   it("hold-then-confirm flow tells the artist a hold is placed", () => {
     expect(acceptConsequenceNote({ producer_confirmation: true }, t)).toEqual({
       title: "Said yes",
-      description: "You said yes. Your producer has the last word next.",
+      description: "You said yes. Your Production Team has the last word next.",
     });
   });
 
@@ -162,8 +162,8 @@ describe("acceptConsequenceNote", () => {
   });
 
   it("defaults to hold-then-confirm when the flow is unknown", () => {
-    expect(acceptConsequenceNote(null, t).description).toBe("You said yes. Your producer has the last word next.");
-    expect(acceptConsequenceNote(undefined, t).description).toBe("You said yes. Your producer has the last word next.");
+    expect(acceptConsequenceNote(null, t).description).toBe("You said yes. Your Production Team has the last word next.");
+    expect(acceptConsequenceNote(undefined, t).description).toBe("You said yes. Your Production Team has the last word next.");
   });
 });
 
@@ -182,7 +182,7 @@ describe("fixed copy constants", () => {
       "Casts are asked in priority order. Asking starts with the first round. If it can't fill the date, you open the next round.",
     );
     expect(DATE_SOURCE_NOTE).toBe(
-      "You can add a date by hand here. If your workspace syncs from Airtable, those dates keep updating on their own, and a date you add here is not changed by a sync.",
+      "You can add one date by hand here. If your workspace syncs from Airtable, those dates keep updating on their own, and the date you add here is not changed by a sync.",
     );
   });
 });

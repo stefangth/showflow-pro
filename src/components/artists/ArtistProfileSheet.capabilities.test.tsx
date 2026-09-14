@@ -99,6 +99,6 @@ describe("ArtistProfileSheet — Phase 4.4 capability gates", () => {
     mockUseCan({ edit_artists: false, resend_account_invite: false });
     renderWithProviders(<MemoryRouter><ArtistProfileSheet artistId="a1" open onOpenChange={() => {}} /></MemoryRouter>);
     await waitFor(() => expect(screen.getByDisplayValue("Ada")).toBeInTheDocument());
-    expect(screen.getByText(/visible to admins and producers in this organization/i)).toBeInTheDocument();
+    expect(screen.getByText(/visible to admins and the Production Team in this organization/i)).toBeInTheDocument();
   });
 });

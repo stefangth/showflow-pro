@@ -6,7 +6,7 @@
       "unavailableTitle": "This ask is no longer available",
       "unavailableDesc": "It may have been withdrawn, or the time to answer ran out. Refresh to see the latest.",
       "declinedTitle": "You said no",
-      "declinedDesc": "If you say no it will not count against you, and it does not affect any other date.",
+      "declinedDesc": "If you say no it will not count against you, and it does not affect any other {{showDate}}.",
       "errorTitle": "Error"
     }
   },
@@ -19,7 +19,7 @@
     "lens": {
       "offers": "Asks",
       "month": "Month",
-      "allDates": "All dates"
+      "allDates": "All {{showDates}}"
     },
     "header": {
       "eyebrow": "AVAILABILITY",
@@ -42,11 +42,11 @@
     "day": {
       "session": "Session",
       "expires": "Answer by",
-      "sub": "Where things stand for this date",
+      "sub": "Where things stand for this {{showDate}}",
       "empty": "You have not been asked about anything this day.",
       "primaryAccept": "Answer the ask",
       "primaryBlock": "Block date",
-      "messageProducer": "Message your production team"
+      "messageProducer": "Message your {{roleProducer}}"
     },
     "monthFlag": {
       "answer": "answer",
@@ -68,24 +68,24 @@
     },
     "notOffered": {
       "title": "Later this month · not asked yet",
-      "eligibleFromCasts": "From your casts"
+      "eligibleFromCasts": "From your {{casts}}"
     },
     "allDates": {
       "headerDate": "Date",
       "headerDay": "Day",
-      "headerShow": "Production",
+      "headerShow": "{{Production}}",
       "headerSession": "Session",
       "headerMyStatus": "My status",
-      "hireOrder": "Contract"
+      "hireOrder": "{{HireOrder}}"
     },
     "shared": {
       "blockDate": "Block date"
     },
-    "ineligibleReason": "You have not been asked about this date. Dates you can be asked about come from your casts and the skills they need.",
+    "ineligibleReason": "You have not been asked about this {{showDate}}. {{ShowDates}} you can be asked about come from your {{casts}} and the {{skills}} they need.",
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
     "loadError": "Couldn't load your bookings or your not-free dates · statuses may be incomplete. Please refresh.",
-    "empty": "No dates yet. Once you are added to a cast, dates you can be asked about appear here.",
+    "empty": "No {{showDates}} yet. Once you are added to one {{cast}}, {{showDates}} you can be asked about appear here.",
     "label": {
       "booked": "Booked",
       "hold": "Said yes",
@@ -94,7 +94,7 @@
     },
     "popover": {
       "confirmed": "Booked",
-      "hold": "Said yes · waiting on your production team"
+      "hold": "Said yes · waiting on your {{roleProducer}}"
     },
     "legend": {
       "title": "Legend:",
@@ -104,7 +104,7 @@
       "offerPending": "Asked",
       "blocked": "Not free"
     },
-    "srIneligible": "Dimmed dates have not been asked of you. Dates you can be asked about come from your casts and the skills they need."
+    "srIneligible": "Dimmed {{showDates}} have not been asked of you. {{ShowDates}} you can be asked about come from your {{casts}} and the {{skills}} they need."
   },
   "toast": {
     "dateBlocked": "Marked not free",
@@ -118,18 +118,18 @@
   "sortChronoLabel": "Date",
   "offersLoadError": "Failed to load your asks. Please refresh · don't block dates until this loads, as pending asks may not be shown.",
   "emptyUnanswered": "No asks waiting on you. Great work.",
-  "emptyAll": "No dates yet.",
+  "emptyAll": "No {{showDates}} yet.",
   "firstRun": {
     "eyebrow": "{{org}} · your calendar",
     "headline": "One thing here is yours, and it takes two minutes",
-    "body": "Block the dates you cannot play. They come off the list before anyone books you, so you only hear about dates that work. Everything else on this page is set by the org.",
+    "body": "Block the dates you cannot take on. They come off the list before anyone books you, so you only hear about dates that work. Everything else on this page is set by the org.",
     "setup": {
       "label": "Your setup",
       "ofOne": "of 1 done",
-      "hint": "An empty calendar is a valid answer. Block only the dates you cannot play."
+      "hint": "An empty calendar is a valid answer. Block only the dates you cannot take on."
     },
     "task": {
-      "title": "Block what you cannot play",
+      "title": "Block what you cannot take on",
       "blocksNothing": "Blocks nothing",
       "body": "Dates you block come off the list before anyone books you, so you only hear about dates that work.",
       "cta": "Block dates"
@@ -137,21 +137,21 @@
     "rules": {
       "heading": "How you get booked here",
       "setBy": "Set by {{org}}. You cannot change these.",
-      "eligibilityTitle": "Who can be asked comes from your cast",
-      "eligibilityBody": "A date appears when a cast you are in can be asked for it and you have every skill it needs.",
+      "eligibilityTitle": "Who can be asked comes from your {{cast}}",
+      "eligibilityBody": "One {{showDate}} appears when one {{cast}} you are in can be asked for it and you have every {{skill}} it needs.",
       "offersTitle": "Asks arrive by email",
-      "offersBody": "One daily send at {{time}}, never a mail per date. Saying yes holds your part until your production team has the last word.",
+      "offersBody": "One daily send at {{time}}, never a mail per {{showDate}}. Saying yes holds your part until your {{roleProducer}} has the last word.",
       "offersBodyDirect": "You are booked directly, so there is nothing to answer.",
       "windowTitle": "Answer within {{hours}} hours",
-      "windowBody": "After that the ask expires and goes to who this date asks next."
+      "windowBody": "After that the ask expires and goes to who this {{showDate}} asks next."
     },
-    "hireOrdersFooter": "Contracts are on. You sign in the browser and the countersigned PDF lands in your mail.",
+    "hireOrdersFooter": "{{HireOrders}} are on. You sign in the browser and the countersigned PDF lands in your mail.",
     "bookingOffTitle": "Availability",
-    "bookingOff": "Dates do not run in ShowFlow for this org, so there is nothing to set here."
+    "bookingOff": "{{ShowDates}} do not run in ShowFlow for this org, so there is nothing to set here."
   },
   "blocked": {
     "title": "Blocked Dates",
-    "description": "Mark dates you cannot play so the system will not ask you about them. Dates you are already booked for are not affected.",
+    "description": "Mark dates you are not free for so the system will not ask you about them. Dates you are already booked for are not affected.",
     "dateLabel": "Date",
     "selectAriaLabel": "Block date",
     "noEligibleOption": "No dates available",

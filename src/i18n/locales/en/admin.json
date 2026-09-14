@@ -26,7 +26,7 @@
   },
   "removeDialog": {
     "title": "Remove member?",
-    "description": "{{email}} loses access to this organization now. Their account, artist profile, and bookings are kept, and you can undo this from the list.",
+    "description": "{{email}} loses access to this organization now. Their account, {{artist}} profile, and bookings are kept, and you can undo this from the list.",
     "action": "Remove",
     "toastRemoved": "Member removed",
     "undo": "Undo"

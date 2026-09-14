@@ -74,7 +74,7 @@ function makeNextAsk(overrides: Partial<NextAsk> = {}): NextAsk {
 describe("TierLadder", () => {
   it("renders the header and city-scoped subtitle", () => {
     renderLadder();
-    expect(screen.getByText("WHO THIS DATE ASKS · PRODUCTION-SPECIFIC")).toBeInTheDocument();
+    expect(screen.getByText("Who this date asks · production-specific")).toBeInTheDocument();
     expect(screen.getByText("Casts in priority order for Berlin")).toBeInTheDocument();
   });
 
@@ -93,7 +93,7 @@ describe("TierLadder", () => {
 
   it("shows a later round's match line with its miss-skill detail", () => {
     renderLadder();
-    expect(screen.getByText("4 of 11 artists match · 7 miss a required skill")).toBeInTheDocument();
+    expect(screen.getByText("4 of 11 artists match · 7 miss one required skill")).toBeInTheDocument();
   });
 
   it("clicking Close fires onCloseTier with the open round's tier", () => {
@@ -141,14 +141,14 @@ describe("TierLadder", () => {
   it("offers a set-up-next-cast action on the empty peek and fires it", () => {
     const onSetUpNextCast = vi.fn();
     renderLadder({ noNextCast: true, onSetUpNextCast });
-    fireEvent.click(screen.getByRole("button", { name: "Set up a next cast" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set up the next cast" }));
     expect(onSetUpNextCast).toHaveBeenCalledTimes(1);
   });
 
   it("shows no set-up action on the peek when the viewer can't manage", () => {
     renderLadder({ noNextCast: true });
     expect(screen.getByText("No next cast set up")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Set up a next cast" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Set up the next cast" })).not.toBeInTheDocument();
   });
 
   it("puts the Open action on the next round and fires onOpen", () => {

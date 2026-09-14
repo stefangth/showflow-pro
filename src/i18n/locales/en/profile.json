@@ -10,9 +10,9 @@
     "emailHint": "Where sign-in links and asks arrive.",
     "emailFixed": "Fixed",
     "displayName": "Display name",
-    "displayNameHint": "Shown on cast lists and in date chats.",
+    "displayNameHint": "Shown on {{cast}} lists and in {{showDate}} chats.",
     "phone": "Phone",
-    "contactNote": "Separate from the account details above: admins and producers in your organization can see the contact details on your artist record so they can reach you about bookings.",
+    "contactNote": "Separate from the account details above: admins and {{roleProducer}} in your organization can see the contact details on your {{artist}} record so they can reach you about bookings.",
     "save": "Save",
     "saving": "Saving…",
     "saved": "Profile saved"
@@ -57,7 +57,7 @@
     }
   },
   "delete": {
-    "hireOrdersNote": "Signed contracts you already agreed to are kept for the organization's records.",
+    "hireOrdersNote": "Signed {{hireOrders}} you already agreed to are kept for the organization's records.",
     "trigger": "Delete",
     "dialogTitle": "Delete your account?",
     "confirmBefore": "This permanently removes your account and personal data. Type",
@@ -75,12 +75,12 @@
     "blockedDatesHint_one": "{{count}} blocked. Editing them lives in Availability.",
     "blockedDatesHint_other": "{{count}} blocked. Editing them lives in Availability.",
     "blockedDatesHintZero": "None blocked. Editing them lives in Availability.",
-    "office": "Message your production team",
+    "office": "Message your {{roleProducer}}",
     "officeHint": "Chats. For anything you cannot change here."
   },
   "language": {
     "title": "Language",
     "hint": "Your app language. Emails and PDFs follow the workspace language the org picked."
   },
-  "sidebarNote": "No setup, no progress, no explainer strip. An artist's account is four groups and never grows a wizard."
+  "sidebarNote": "No setup, no progress, no explainer strip. The {{artist}} account is four groups and never grows a wizard."
 }

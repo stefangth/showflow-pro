@@ -1,10 +1,10 @@
 {
   "steps": {
     "shows": {
-      "title": "Get your productions in",
-      "todoHint": "Sync from Airtable, import a sheet, or add a production by hand.",
-      "doneHint": "Your productions are in.",
-      "ctaLabel": "Add a production"
+      "title": "Get your {{productions}} in",
+      "todoHint": "Sync from Airtable, import a sheet, or add one {{production}} by hand.",
+      "doneHint": "Your {{productions}} are in.",
+      "ctaLabel": "Add a new {{production}}"
     },
     "flow": {
       "title": "Booking flow",
@@ -13,62 +13,62 @@
       "ctaLabel": "Choose flow"
     },
     "people": {
-      "title": "Add your artists",
-      "todoHint": "Nobody to book until your roster has active artists.",
-      "doneHint": "Your roster has active artists on it.",
-      "ctaLabel": "Add artists"
+      "title": "Add your {{artists}}",
+      "todoHint": "Nobody to book until your roster has active {{artists}}.",
+      "doneHint": "Your roster has active {{artists}} on it.",
+      "ctaLabel": "Add {{artists}}"
     },
     "slots": {
-      "title": "Casting breakdown per production",
-      "todoHint": "A production with no casting breakdown never reads as full.",
-      "doneHint": "Set on every production.",
-      "ctaLabel": "Set the casting breakdown"
+      "title": "Parts breakdown per {{production}}",
+      "todoHint": "Any {{production}} with no parts breakdown never reads as full.",
+      "doneHint": "Set on every {{production}}.",
+      "ctaLabel": "Set the parts breakdown"
     },
     "ladder": {
-      "title": "Cast priorities per city",
-      "todoHint": "Your casts ranked per city, first cast asked first.",
-      "doneHint": "Every scheduled city has a cast asked first.",
+      "title": "{{Cast}} priorities per city",
+      "todoHint": "Your {{casts}} ranked per city, first {{cast}} asked first.",
+      "doneHint": "Every scheduled city has one {{cast}} asked first.",
       "ctaLabel": "Review coverage"
     },
     "eligibility": {
       "title": "Who can be asked",
-      "todoHint": "Which casts belong to which production, in which city.",
-      "doneHint": "Every scheduled production and city has a cast.",
+      "todoHint": "Which {{casts}} belong to which {{production}}, in which city.",
+      "doneHint": "Every scheduled {{production}} and city has one {{cast}}.",
       "ctaLabel": "Review coverage"
     },
     "timing": {
       "title": "Email timing",
-      "todoHint": "When the ask goes out, and how long artists have to answer.",
+      "todoHint": "When the ask goes out, and how long {{artists}} have to answer.",
       "doneHint": "Hours set. Change them any time in Settings.",
       "ctaLabel": "Set timing"
     },
     "team": {
-      "title": "Add your production team",
-      "todoHint": "Invite the producers who plan dates, run asks and book the cast.",
-      "doneHint": "Your production team is invited.",
+      "title": "Add your {{roleProducer}}",
+      "todoHint": "Invite your {{roleProducer}}: they plan {{showDates}}, run asks and book the {{cast}}.",
+      "doneHint": "Your {{roleProducer}} is invited.",
       "ctaLabel": "Invite team"
     },
     "blockDates": {
-      "title": "Block what you cannot play",
-      "todoHint": "Dates you block come off the list before anyone books you, so you only hear about dates that work.",
+      "title": "Block what you cannot take on",
+      "todoHint": "{{ShowDates}} you block come off the list before anyone books you, so you only hear about {{showDates}} that work.",
       "doneHint": "Your calendar is up to date.",
       "ctaLabel": "Open availability"
     },
     "letterhead": {
       "title": "Letterhead",
-      "todoHint": "Your name, address and logo on every contract.",
-      "doneHint": "Set. Every contract uses it.",
+      "todoHint": "Your name, address and logo on every {{hireOrder}}.",
+      "doneHint": "Set. Every {{hireOrder}} uses it.",
       "ctaLabel": "Set letterhead"
     },
     "terms": {
       "title": "Terms",
-      "todoHint": "The clauses printed on every contract.",
+      "todoHint": "The clauses printed on every {{hireOrder}}.",
       "doneHint": "A terms variant is chosen.",
       "ctaLabel": "Choose terms"
     },
     "countersign": {
       "title": "Countersignature",
-      "todoHint": "How the artist signs a contract.",
+      "todoHint": "How the {{artist}} signs the {{hireOrder}}.",
       "doneHint": "Countersign policy set.",
       "ctaLabel": "Set countersign"
     }
@@ -76,29 +76,29 @@
   "railHeader": {
     "booking": {
       "title": "Get bookings running",
-      "body": "Dates keep syncing and you can edit them now. These are what the first booking needs."
+      "body": "{{ShowDates}} keep syncing and you can edit them now. These are what the first booking needs."
     },
     "hire": {
-      "title": "Get contracts ready",
-      "body": "You can draft contracts right now. These are only needed before the first one goes out."
+      "title": "Get {{hireOrders}} ready",
+      "body": "You can draft {{hireOrders}} right now. These are only needed before the first one goes out."
     }
   },
   "offFooter": {
     "booking": "Booking engine is not enabled for this org. Ask your account manager to switch it on.",
-    "hire": "Contracts are off for this org. Ask your account manager to switch it on."
+    "hire": "{{HireOrders}} are off for this org. Ask your account manager to switch it on."
   },
   "bookingRules": {
     "offersWithTiers": {
       "title": "Asks in order",
-      "hint": "The first group is asked first. If the date is still short, the next group opens later."
+      "hint": "The first group is asked first. If the {{showDate}} is still short, the next group opens later."
     },
     "directBooking": {
       "title": "Direct booking",
-      "hint": "Producers book straight from who can be asked."
+      "hint": "{{roleProducer}} books straight from who can be asked."
     },
     "offersByEmail": {
       "title": "Asks go out by email",
-      "hint": "Artists answer from the email. Your timing settings decide whether it leaves at once or waits for the next daily send."
+      "hint": "{{Artists}} answer from the email. Your timing settings decide whether it leaves at once or waits for the next daily send."
     },
     "responseWindow": {
       "title": "Answer by",
@@ -110,14 +110,14 @@
     "confirmManual": {
       "title": "Booking needs the last word"
     },
-    "confirmHint": "An accepted ask waits for a producer to have the last word. That is the queue on this page.",
+    "confirmHint": "An accepted ask waits for the {{roleProducer}} to have the last word. That is the queue on this page.",
     "nothingToAccept": {
       "title": "Nothing to accept",
-      "hint": "An artist you add to a date is booked. It shows in their calendar as booked."
+      "hint": "Any {{artist}} you add to one {{showDate}} is booked. It appears in their calendar as booked."
     }
   },
   "producerRole": {
-    "note": "You are on the Production Team. You plan dates, run asks and book the cast. Inviting people, casts and settings stay with the admin.",
+    "note": "You are on the {{roleProducer}}. You plan {{showDates}}, run asks and book the {{cast}}. Inviting people, {{casts}} and settings stay with the admin.",
     "ruleTitle": "What your role covers"
   },
   "roleExplainer": {
@@ -126,21 +126,21 @@
   "hireRules": {
     "autoDrafted": {
       "title": "Auto-drafted on fill",
-      "hint": "When a date fills, a draft contract is created from its booked cast."
+      "hint": "When one {{showDate}} fills, a draft {{hireOrder}} is created from its booked {{cast}}."
     },
     "issuingManual": {
       "title": "Issuing is manual",
-      "hint": "A producer reviews the draft and issues the PDF to the artist."
+      "hint": "{{roleProducer}} reviews the draft and issues the PDF to the {{artist}}."
     }
   },
   "artistRules": {
     "eligibilityFromCast": {
-      "title": "Who can be asked comes from your cast",
-      "hint": "Your casts decide which dates you can be asked about."
+      "title": "Who can be asked comes from your {{cast}}",
+      "hint": "Your {{casts}} decide which {{showDates}} you can be asked about."
     },
     "offersArriveByEmail": {
       "title": "Asks arrive by email",
-      "hint": "Your producer's timing decides whether that is the daily send or the moment you are next in line."
+      "hint": "Your {{roleProducer}}'s timing decides whether that is the daily send or the moment you are next in line."
     },
     "responseWindow": {
       "title": "You have a window to answer",
@@ -148,11 +148,11 @@
     },
     "bookedDirectly": {
       "title": "You are booked directly",
-      "hint": "There is no ask step. A date booked for you appears in your calendar as booked."
+      "hint": "There is no ask step. Any {{showDate}} booked for you appears in your calendar as booked."
     },
     "blockingIsNo": {
       "title": "Blocking is how you say no",
-      "hint": "Dates you block come out of the list your producer books from, and that is where your say goes."
+      "hint": "{{ShowDates}} you block come out of the list your {{roleProducer}} books from, and that is where your say goes."
     }
   },
   "welcome": {
@@ -175,10 +175,10 @@
     },
     "producer": {
       "pendingNone": "Nothing is waiting on you right now.",
-      "pendingBody_one": "{{count}} artist is waiting on you to book them.",
-      "pendingBody_other": "{{count}} artists are waiting on you to book them.",
-      "emptyOffers": "Dates, asks and bookings appear here the moment the first import lands.",
-      "emptyDirect": "Dates and bookings appear here the moment the first import lands.",
+      "pendingBody_one": "{{count}} {{artist}} is waiting on you to book them.",
+      "pendingBody_other": "{{count}} {{artists}} are waiting on you to book them.",
+      "emptyOffers": "{{ShowDates}}, asks and bookings appear here the moment the first import lands.",
+      "emptyDirect": "{{ShowDates}} and bookings appear here the moment the first import lands.",
       "completeHeadline": "You have joined {{org}}",
       "completePrimary": "How this org works",
       "completeSecondary": "Dismiss",
@@ -194,16 +194,16 @@
     },
     "artist": {
       "completeHeadlineOffers": "Your first asks are on their way",
-      "completeHeadlineDirect": "Your first dates are on their way",
+      "completeHeadlineDirect": "Your first {{showDates}} are on their way",
       "completeBodyOffers": "Your account is set up. A few rules decide when an ask reaches you and how long you have to answer.",
-      "completeBodyDirect": "Your account is set up. A few rules decide how this org books you, and blocking dates is your part of it.",
+      "completeBodyDirect": "Your account is set up. A few rules decide how this org books you, and blocking {{showDates}} is your part of it.",
       "completePrimary": "How booking works here",
       "completeSecondary": "Dismiss",
       "completeProgressLabel": "Set up · {{total}} of {{total}}",
       "completeProgressHint": "The rules you inherited",
       "incompleteHeadline": "{{org}} added you to the roster",
-      "incompleteBodyOffers": "Asks arrive by email and land on this page. Block the dates you cannot play first, so you only get asked about dates that work.",
-      "incompleteBodyDirect": "Your producer books you directly, and confirmed dates land on this page. Block the dates you cannot play first, so they come off the list before anyone books you.",
+      "incompleteBodyOffers": "Asks arrive by email and land on this page. Block the {{showDates}} you cannot take on first, so you only get asked about {{showDates}} that work.",
+      "incompleteBodyDirect": "Your {{roleProducer}} books you directly, and confirmed {{showDates}} land on this page. Block the {{showDates}} you cannot take on first, so they come off the list before anyone books you.",
       "incompletePrimary": "Start setup",
       "incompleteSecondary": "Later",
       "incompleteProgressLabel": "Set up · {{filled}} of {{total}}",
@@ -216,7 +216,7 @@
     "completeTitle": "The rules you inherited",
     "completeBodyCanEdit": "You can change them in Settings, but every number on this page follows them today.",
     "completeBodyProducer": "You cannot change these, but every number on this page follows them.",
-    "completeBodyArtist": "You cannot change these. Every date you are booked on follows them.",
+    "completeBodyArtist": "You cannot change these. Every {{showDate}} you are booked on follows them.",
     "adminEyebrow": "Set up",
     "adminTitle": "Get the workspace running",
     "adminBody": "Some of these block the first booking. Nothing here stops you using the rest of the app.",
@@ -226,12 +226,12 @@
     "producerBodyReadOnly": "Only an admin can do these. This is here so you know why the page is empty, not so you can fix it.",
     "artistEyebrow": "Set up",
     "artistTitle": "Before your first booking",
-    "artistBody": "None of this blocks anything. It just keeps the dates you cannot play out of the way."
+    "artistBody": "None of this blocks anything. It just keeps the {{showDates}} you cannot take on out of the way."
   },
   "collapsed": {
     "completeLabel": "Set up · done",
     "completeHintArtist": "How this org books you",
-    "completeHintOrg": "Booking engine, dates, casting breakdown, your team",
+    "completeHintOrg": "Booking engine, {{showDates}}, parts breakdown, your team",
     "completeCtaArtist": "How booking works here",
     "completeCtaOrg": "How this org works",
     "incompleteLabelProducer": "Org setup in progress",
@@ -243,14 +243,14 @@
   },
   "coverage": {
     "ladder": {
-      "noFlow": "Your casts ranked per city, first cast asked first.",
-      "direct": "Your casts ranked per city. You book artists directly, so nothing reads this ranking today. It starts to matter if you switch to asks.",
-      "offers": "Your casts ranked per city. The first cast is asked first, then the ones below it."
+      "noFlow": "Your {{casts}} ranked per city, first {{cast}} asked first.",
+      "direct": "Your {{casts}} ranked per city. You book {{artists}} directly, so nothing reads this ranking today. It starts to matter if you switch to asks.",
+      "offers": "Your {{casts}} ranked per city. The first {{cast}} is asked first, then the ones below it."
     },
     "eligibility": {
-      "what": "Which casts belong to a production in a city.",
-      "direct": "Which casts belong to a production in a city. A production and city with no match can be booked from your whole active roster, minus anyone not free on that date or missing a required skill.",
-      "offers": "Which casts belong to a production in a city. Without a match, nobody gets asked."
+      "what": "Which {{casts}} belong to each {{production}} in a city.",
+      "direct": "Which {{casts}} belong to each {{production}} in a city. Any {{production}} and city with no match can be booked from your whole active roster, minus anyone not free on that {{showDate}} or missing a required {{skill}}.",
+      "offers": "Which {{casts}} belong to each {{production}} in a city. Without a match, nobody gets asked."
     }
   },
   "stageChain": {
@@ -273,83 +273,83 @@
     },
     "modules": {
       "booking": "Booking engine",
-      "hire": "Contracts"
+      "hire": "{{HireOrders}}"
     },
     "tag": {
-      "yourCast": "Your cast",
+      "yourCast": "Your {{cast}}",
       "bookingEngine": "Booking engine",
       "bookingEngineOff": "Booking engine · off",
       "bookingEngineDirect": "Booking engine · direct",
       "bookingEngineYours": "Booking engine · yours",
-      "showsAndBookings": "Dates",
-      "hireOrders": "Contracts",
-      "hireOrdersOff": "Contracts · off",
-      "hireOrdersManual": "Contracts · manual"
+      "showsAndBookings": "{{ShowDates}}",
+      "hireOrders": "{{HireOrders}}",
+      "hireOrdersOff": "{{HireOrders}} · off",
+      "hireOrdersManual": "{{HireOrders}} · manual"
     },
     "artist": {
       "eligibilityName": "Who can be asked",
-      "eligibilityOnLine": "Your casts decide which dates you can be asked about.",
+      "eligibilityOnLine": "Your {{casts}} decide which {{showDates}} you can be asked about.",
       "eligibilityOnMetricLabel": "can be asked",
-      "eligibilityOffLine": "No booking module, so no dates reach you here.",
+      "eligibilityOffLine": "No booking module, so no {{showDates}} reach you here.",
       "availabilityName": "Availability",
-      "availabilityDoneLine": "Not-free dates are never asked about.",
-      "availabilityMetricLabel": "not-free dates",
+      "availabilityDoneLine": "Not-free {{showDates}} are never asked about.",
+      "availabilityMetricLabel": "not-free {{showDates}}",
       "availabilityDoneChip": "Open availability",
       "availabilityActLine": "The one step that is yours.",
-      "availabilityActPrimary": "Block dates",
+      "availabilityActPrimary": "Block {{showDates}}",
       "availabilityOffLine": "Nothing to block against.",
       "offerName": "Ask",
       "offerImportedLine": "One daily send at {{time}}. {{hours}} hours to answer.",
       "offerMetricLabel": "arriving {{hour}}",
-      "offerWaitsLine": "One daily send at {{time}}, never a mail per date.",
-      "offerWaitsNeeds": "Needs dates for your cast",
+      "offerWaitsLine": "One daily send at {{time}}, never a mail per {{showDate}}.",
+      "offerWaitsNeeds": "Needs {{showDates}} for your {{cast}}",
       "bookedDirectlyName": "Booked directly",
-      "bookedDirectlyLine": "There is no ask step. A booked date appears as booked.",
+      "bookedDirectlyLine": "There is no ask step. A booked {{showDate}} appears as booked.",
       "bookedDirectlyMetricLabel": "booked",
       "offerOffLine": "No asks are sent from ShowFlow.",
-      "hireName": "Contract",
+      "hireName": "{{HireOrder}}",
       "hireOnLine": "You sign in the browser. The countersigned PDF lands in your mail.",
       "hireOnMetricLabel": "to sign",
-      "hireOffLine": "Your production team emails your paperwork after you are booked.",
+      "hireOffLine": "Your {{roleProducer}} emails your paperwork after you are booked.",
       "hireOffNeeds": "Nothing for you to do here"
     },
     "org": {
       "offersName": "Asks",
       "bookDirectlyName": "Book directly",
-      "offersLine": "The first group is asked at {{hour}}, the next group opens 24h later if the date is still short.",
-      "directLine": "A producer books straight from who can be asked. Nothing to accept.",
-      "datesName": "Dates",
-      "datesImportedLine_one": "{{count}} date is in your catalog.",
-      "datesImportedLine_other": "{{count}} dates are in your catalog.",
-      "datesMetricLabel": "dates in",
-      "datesChipOpen": "Open dates",
-      "datesChipSlots": "Set the casting breakdown",
-      "datesActLine": "Nothing downstream can mean anything until productions exist.",
-      "datesActPrimaryImport": "Import dates",
-      "datesActPrimaryAdd": "Add a production",
-      "datesOffLine": "Dates and bookings do not run in ShowFlow for this org.",
+      "offersLine": "The first group is asked at {{hour}}, the next group opens 24h later if the {{showDate}} is still short.",
+      "directLine": "{{roleProducer}} books straight from who can be asked. Nothing to accept.",
+      "datesName": "{{ShowDates}}",
+      "datesImportedLine_one": "{{count}} {{showDate}} is in your catalog.",
+      "datesImportedLine_other": "{{count}} {{showDates}} are in your catalog.",
+      "datesMetricLabel": "{{showDates}} in",
+      "datesChipOpen": "Open {{showDates}}",
+      "datesChipSlots": "Set the parts breakdown",
+      "datesActLine": "Nothing downstream can mean anything until {{productions}} exist.",
+      "datesActPrimaryImport": "Import {{showDates}}",
+      "datesActPrimaryAdd": "Add a new {{production}}",
+      "datesOffLine": "{{ShowDates}} and bookings do not run in ShowFlow for this org.",
       "offersReadyMetricLabel": "ready to ask",
-      "bookableMetricLabel": "bookable dates",
+      "bookableMetricLabel": "bookable {{showDates}}",
       "offersPrimary": "Ask the first group",
       "offersChip": "Open the picker",
-      "offersWaitsNeeds": "Needs a date with the casting breakdown set",
+      "offersWaitsNeeds": "Needs one {{showDate}} with the parts breakdown set",
       "offersOffName": "Asks",
       "offersOffLine": "No groups to ask, no daily send, no direct picker.",
       "confirmName": "Book",
-      "confirmLine": "An accepted ask is not a booking until a producer books it.",
+      "confirmLine": "An accepted ask is not a booking until the {{roleProducer}} books it.",
       "confirmNeeds": "Needs a yes",
       "confirmedName": "Booked on the spot",
       "confirmedLine": "A direct booking is booked as it is made. No queue.",
       "confirmedMetricLabel": "booked",
       "confirmOffLine": "Nothing to book here.",
-      "hireName": "Contract",
-      "hireOnLine": "You can draft contracts right now. These are only needed before the first one goes out.",
+      "hireName": "{{HireOrder}}",
+      "hireOnLine": "You can draft {{hireOrders}} right now. These are only needed before the first one goes out.",
       "hireMetricLabel": "drafts",
-      "hireChip": "Draft a contract",
-      "hireManualLine": "With no booking module, every contract is a manual engagement with no linked date.",
-      "hireManualMetricLabel": "contracts",
-      "hireManualPrimary": "New contract",
-      "hireOffLine": "Booked dates leave ShowFlow as a CSV.",
+      "hireChip": "Draft a new {{hireOrder}}",
+      "hireManualLine": "With no booking module, every {{hireOrder}} is a manual engagement with no linked {{showDate}}.",
+      "hireManualMetricLabel": "{{hireOrders}}",
+      "hireManualPrimary": "New {{hireOrder}}",
+      "hireOffLine": "Booked {{showDates}} leave ShowFlow as a CSV.",
       "hireOffNeeds": "Switched on by your account manager"
     },
     "headline": {
@@ -363,10 +363,10 @@
       "nothingOnQueueHint": "Sample rows, shown once a module is on.",
       "artistProgressLabel": "Set up · {{filled}} of {{total}}",
       "artistImportedHeadlineOffers": "Your first ask arrives tomorrow at {{hour}}",
-      "artistImportedHeadlineDirect": "Your producer books you directly",
-      "artistImportedBodyOffers_one": "You have {{count}} date marked not free, so the daily send only asks about dates that work.",
-      "artistImportedBodyOffers_other": "You have {{count}} dates marked not free, so the daily send only asks about dates that work.",
-      "artistImportedBodyDirect": "Not-free dates come out of the list your producer books from. That is where your say goes.",
+      "artistImportedHeadlineDirect": "Your {{roleProducer}} books you directly",
+      "artistImportedBodyOffers_one": "You have {{count}} {{showDate}} marked not free, so the daily send only asks about {{showDates}} that work.",
+      "artistImportedBodyOffers_other": "You have {{count}} {{showDates}} marked not free, so the daily send only asks about {{showDates}} that work.",
+      "artistImportedBodyDirect": "Not-free {{showDates}} come out of the list your {{roleProducer}} books from. That is where your say goes.",
       "artistImportedHintOffers": "You get {{hours}} hours to answer",
       "artistImportedHintDirect": "Nothing to accept",
       "artistImportedProgressHint": "Also counts as done once you have opened Availability. An empty calendar is a valid answer.",
@@ -375,25 +375,25 @@
       "artistRosterBodyNoSteps": "Everything on this page is set by the org. There is nothing here for you to do.",
       "artistRosterHintHasSteps": "About 2 minutes",
       "artistRosterHintNoSteps": "Nothing to do here",
-      "artistRosterProgressHintHasSteps": "None of this blocks anything. It keeps unplayable dates out of the way.",
+      "artistRosterProgressHintHasSteps": "None of this blocks anything. It keeps the {{showDates}} you cannot take on out of the way.",
       "artistRosterProgressHintNoSteps": "There is nothing to set up on your side.",
       "artistGhost": "How booking works here",
-      "artistQueueTitle": "Your dates",
+      "artistQueueTitle": "Your {{showDates}}",
       "artistQueueHint": "Live. This is your real content, not a preview.",
       "orgProgressLabelAdmin": "Set up · {{filled}} of {{total}}",
       "orgProgressLabelOther": "Org setup · {{filled}} of {{total}}",
-      "hireOnlyHeadline": "Contracts is the only module running",
-      "hireOnlyBody": "No dates, asks or bookings in ShowFlow. Every contract is a manual engagement, so the three steps below are all the setup there is.",
+      "hireOnlyHeadline": "{{HireOrders}} is the only module running",
+      "hireOnlyBody": "No {{showDates}}, asks or bookings in ShowFlow. Every {{hireOrder}} is a manual engagement, so the three steps below are all the setup there is.",
       "hireOnlyGhost": "How this org works",
       "hireOnlyHint": "Two of the three block issuing",
-      "hireOnlyProgressHint": "You can draft a contract now. These are only needed before the first one goes out.",
-      "orgImportedLanded_one": "{{count}} date landed.",
-      "orgImportedLanded_other": "{{count}} dates landed.",
+      "hireOnlyProgressHint": "You can draft one {{hireOrder}} now. These are only needed before the first one goes out.",
+      "orgImportedLanded_one": "{{count}} {{showDate}} landed.",
+      "orgImportedLanded_other": "{{count}} {{showDates}} landed.",
       "orgImportedLandedOffersClause": "{{readyToOffer}} of them can be asked in the next daily send.",
       "orgImportedLandedBookableClause_one": "{{count}} is bookable now.",
       "orgImportedLandedBookableClause_other": "{{count}} are bookable now.",
-      "orgImportedBodyOffers": "Stage 01 is running. The remaining dates have no casting breakdown, so the daily send will skip them.",
-      "orgImportedBodyDirect": "Stage 01 is running. A producer books straight from who can be asked. There is no ask step.",
+      "orgImportedBodyOffers": "Stage 01 is running. The remaining {{showDates}} have no parts breakdown, so the daily send will skip them.",
+      "orgImportedBodyDirect": "Stage 01 is running. {{roleProducer}} books straight from who can be asked. There is no ask step.",
       "orgGhostHowItWorks": "How this org works",
       "orgGhostOutstanding": "What is still outstanding",
       "orgImportedHintOffers": "The first group is asked at {{time}}",
@@ -401,25 +401,25 @@
       "orgProgressHintReadOnly": "The steps marked Admin are not yours. The rest are.",
       "orgImportedProgressHint": "The steps left sit in the stage they hold up.",
       "orgEmptyHeadlineProducer": "{{org}} is still being set up",
-      "orgEmptyHeadlineAdmin": "The chain is not running yet. One thing starts it: dates.",
-      "orgEmptyBodyProducer": "Booking engine is on, but no dates exist yet. That is why this page is empty, not a bug.",
+      "orgEmptyHeadlineAdmin": "The chain is not running yet. One thing starts it: {{showDates}}.",
+      "orgEmptyBodyProducer": "Booking engine is on, but no {{showDates}} exist yet. That is why this page is empty, not a bug.",
       "orgEmptyBodyAdmin": "Booking engine is on and configured. Every step it still needs is docked in the stage it unblocks.",
       "orgEmptyGhostHowItWillWork": "How this org will work",
       "orgEmptyHintAdmin": "About 15 minutes",
       "orgEmptyHintCanEdit": "You can do these too",
-      "orgEmptyHintReadOnly": "Adding productions is yours; the settings are not",
+      "orgEmptyHintReadOnly": "Adding {{productions}} is yours; the settings are not",
       "orgEmptyProgressHint": "Nothing here stops you using the rest of the app.",
       "orgQueueTitle": "What this page becomes",
-      "orgQueueHint": "Sample rows. Yours replace them once the org has dates."
+      "orgQueueHint": "Sample rows. Yours replace them once the org has {{showDates}}."
     },
     "result": {
       "eyebrow": "{{org}} · first run",
-      "chainTitleArtist": "How a date reaches you",
-      "chainTitleOrg": "How a date will move",
+      "chainTitleArtist": "How {{showDates}} reach you",
+      "chainTitleOrg": "How {{showDates}} will move",
       "sideTitleNothingOn": "The app is open, there is just nothing to run",
       "sideTitleDefault": "Nothing here blocks the rest of the app",
-      "sideBodyProducer": "You are on the Production Team. You plan dates, run asks and book the cast. Inviting people, casts and settings stay with the admin.",
-      "sideBodyArtist": "Blocking is how you say no. Not-free dates come out of the list before anyone books you.",
+      "sideBodyProducer": "You are on the {{roleProducer}}. You plan {{showDates}}, run asks and book the {{cast}}. Inviting people, {{casts}} and settings stay with the admin.",
+      "sideBodyArtist": "Blocking is how you say no. Not-free {{showDates}} come out of the list before anyone books you.",
       "sideBodyDefault": "Some steps above block the first booking. The app itself is open, and two things worth doing are not steps at all."
     },
     "side": {
@@ -429,7 +429,7 @@
       "chats": "Chats",
       "howBookingWorksHere": "How booking works here",
       "rulesYouInherited": "The rules you inherited",
-      "messageOffice": "Message your production team",
+      "messageOffice": "Message your {{roleProducer}}",
       "blockingIsHowYouSayNo": "Blocking is how you say no",
       "availability": "Availability",
       "seeWhatEachRoleCanDo": "See what each role can do",

@@ -156,7 +156,7 @@ export function UsersTab() {
                     {overflowCount > 0 && <Badge variant="outline">+{overflowCount}</Badge>}
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{roles.map(roleLabel).join(", ")}</TableCell>
+                <TableCell className="text-muted-foreground">{roles.map((role) => roleLabel(role)).join(", ")}</TableCell>
                 <TableCell>{isLinked && <Badge variant="outline">Linked</Badge>}</TableCell>
                 <TableCell className="text-muted-foreground">{formatLastActivity(u.last_sign_in_at)}</TableCell>
                 <TableCell>

@@ -605,8 +605,8 @@ export function CoveragePanel({ orgId, onOpenCast }: CoveragePanelProps) {
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-card p-3">
                 <p className="text-sm text-muted-foreground">
                   {overriddenCount === 0
-                    ? t('coverage.followsDefault', { show: showName, count: cities.length })
-                    : t('coverage.overridesSummary', { show: showName, overrides: overriddenCount, total: cities.length })}
+                    ? t('coverage.followsDefault', { showTitle: showName, count: cities.length })
+                    : t('coverage.overridesSummary', { showTitle: showName, overrides: overriddenCount, total: cities.length })}
                 </p>
                 <Button
                   type="button"

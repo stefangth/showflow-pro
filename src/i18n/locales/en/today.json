@@ -8,96 +8,96 @@
     "sub_one": "The other one is filling on its own. {{bookedText}}",
     "sub_other": "The other {{count}} are filling on their own. {{bookedText}}",
     "subDone": "Autopilot cleared the board. {{bookedText}}",
-    "bookedOvernight_zero": "No artists were booked overnight.",
-    "bookedOvernight_one": "One artist was booked overnight.",
-    "bookedOvernight_other": "{{count}} artists were booked overnight.",
+    "bookedOvernight_zero": "No {{artists}} were booked overnight.",
+    "bookedOvernight_one": "One {{artist}} was booked overnight.",
+    "bookedOvernight_other": "{{count}} {{artists}} were booked overnight.",
     "saidYesOvernight_zero": "Nobody said yes overnight.",
-    "saidYesOvernight_one": "One artist said yes overnight and is waiting on you to book them.",
-    "saidYesOvernight_other": "{{count}} artists said yes overnight and are waiting on you to book them.",
+    "saidYesOvernight_one": "One {{artist}} said yes overnight and is waiting on you to book them.",
+    "saidYesOvernight_other": "{{count}} {{artists}} said yes overnight and are waiting on you to book them.",
     "saidYesOvernightAdmin_zero": "Nobody said yes overnight.",
-    "saidYesOvernightAdmin_one": "One artist said yes overnight and is waiting on an admin to book them.",
-    "saidYesOvernightAdmin_other": "{{count}} artists said yes overnight and are waiting on an admin to book them."
+    "saidYesOvernightAdmin_one": "One {{artist}} said yes overnight and is waiting on an admin to book them.",
+    "saidYesOvernightAdmin_other": "{{count}} {{artists}} said yes overnight and are waiting on an admin to book them."
   },
   "atRisk": {
     "badge_one": "At risk · {{count}} part empty",
     "badge_other": "At risk · {{count}} parts empty",
-    "body": "Autopilot has asked everyone it can and the date is still {{count}} short, {{days}} days out. It needs a decision only you can make.",
-    "bodyAdmin": "Autopilot has asked everyone it can and the date is still {{count}} short, {{days}} days out. It needs a decision an admin has to make.",
-    "exhaustedBody": "Autopilot has nobody left it can ask for this date, {{days}} days out. It is still {{count}} short. Only you can find a way forward now.",
-    "exhaustedBodyAdmin": "Autopilot has nobody left it can ask for this date, {{days}} days out. It is still {{count}} short. Only an admin can find a way forward now.",
-    "openCastTitle": "Open it up to {{cast}}",
-    "openCastNote_one": "{{count}} artist free that night. They would be asked tonight at {{time}}.",
-    "openCastNote_other": "{{count}} artists free that night. They would be asked tonight at {{time}}.",
-    "runShortTitle": "Run the show with {{count}} fewer",
-    "runShortNote_one": "Sets the date to {{count}} part. Nobody else gets asked.",
-    "runShortNote_other": "Sets the date to {{count}} parts. Nobody else gets asked.",
+    "body": "Autopilot has asked everyone it can and the {{showDate}} is still {{count}} short, {{days}} days out. It needs a decision only you can make.",
+    "bodyAdmin": "Autopilot has asked everyone it can and the {{showDate}} is still {{count}} short, {{days}} days out. It needs a decision an admin has to make.",
+    "exhaustedBody": "Autopilot has nobody left it can ask for this {{showDate}}, {{days}} days out. It is still {{count}} short. Only you can find a way forward now.",
+    "exhaustedBodyAdmin": "Autopilot has nobody left it can ask for this {{showDate}}, {{days}} days out. It is still {{count}} short. Only an admin can find a way forward now.",
+    "openCastTitle": "Open it up to {{castName}}",
+    "openCastNote_one": "{{count}} {{artist}} free that day. They would be asked tonight at {{time}}.",
+    "openCastNote_other": "{{count}} {{artists}} free that day. They would be asked tonight at {{time}}.",
+    "runShortTitle": "Run the {{show}} with {{count}} fewer",
+    "runShortNote_one": "Sets this {{showDate}} to {{count}} part. Nobody else gets asked.",
+    "runShortNote_other": "Sets this {{showDate}} to {{count}} parts. Nobody else gets asked.",
     "pickYourselfTitle": "Pick the people yourself",
-    "pickYourselfNote": "{{total}} artists on the roster, {{free}} of them free that night.",
-    "pickYourselfExhaustedNote": "Nobody on the roster is free that night either. Open the date to see what else you can do.",
+    "pickYourselfNote": "{{total}} {{artists}} on the roster, {{free}} of them free that day.",
+    "pickYourselfExhaustedNote": "Nobody on the roster is free that day either. Open the {{showDate}} to see what else you can do.",
     "adminNeededTitle": "An admin has to take this one",
-    "adminNeededNote": "You cannot book on this date. Open it to see where it stands.",
+    "adminNeededNote": "You cannot book on this {{showDate}}. Open it to see where it stands.",
     "doThis": "Do this",
-    "openDate": "Open the date"
+    "openDate": "Open the {{showDate}}"
   },
   "cancelled": {
-    "badge": "Cancelled · cast not told",
-    "body": "The house cancelled this date. {{names}} still have it in their calendar. Autopilot does not send bad news on its own.",
+    "badge": "Cancelled · {{cast}} not told",
+    "body": "This {{showDate}} was cancelled. {{names}} still have it in their calendar. Autopilot does not send bad news on its own.",
     "cta": "Tell them it is off",
     "readFirst": "Read the message first"
   },
   "bounced": {
     "title_one": "One ask did not arrive",
     "title_other": "{{count}} asks did not arrive",
-    "body": "The email to {{names}} bounced {{when}}, so they have not heard about {{show}}. Autopilot will not retry a bad address.",
+    "body": "The email to {{names}} bounced {{when}}, so they have not heard about {{showTitle}}. Autopilot will not retry a bad address.",
     "fix": "Fix their addresses",
     "later": "Later"
   },
   "empty": {
     "title": "Nothing needs you",
-    "body_zero": "No dates are waiting on anything right now. If one is at risk, or something has to be said to an artist by a human, it turns up here. Nothing is waiting quietly in a queue.",
-    "body_one": "{{count}} date is filling on its own. If one is at risk, or something has to be said to an artist by a human, it turns up here. Nothing is waiting quietly in a queue.",
-    "body_other": "{{count}} dates are filling on their own. If one is at risk, or something has to be said to an artist by a human, it turns up here. Nothing is waiting quietly in a queue.",
-    "cta": "Look at the season anyway"
+    "body_zero": "No {{showDates}} are waiting on anything right now. If one is at risk, or something has to be said to one {{artist}} by a human, it turns up here. Nothing is waiting quietly in a queue.",
+    "body_one": "{{count}} {{showDate}} is filling on its own. If one is at risk, or something has to be said to one {{artist}} by a human, it turns up here. Nothing is waiting quietly in a queue.",
+    "body_other": "{{count}} {{showDates}} are filling on their own. If one is at risk, or something has to be said to one {{artist}} by a human, it turns up here. Nothing is waiting quietly in a queue.",
+    "cta": "Look at the schedule anyway"
   },
   "feed": {
     "title": "Done for you since {{day}}",
     "review": "Review",
     "undo": "Undo",
-    "book_one": "Booked {{names}} onto {{show}}, {{date}}. They said yes, so the part is theirs.",
-    "book_other": "Booked {{names}} onto {{show}}, {{date}}. They said yes, so the parts are theirs.",
-    "bookHold_one": "{{names}} said yes to {{show}}, {{date}}. Book them and the part is theirs.",
-    "bookHold_other": "{{names}} said yes to {{show}}, {{date}}. Book them and the parts are theirs.",
-    "bookHoldAdmin_one": "{{names}} said yes to {{show}}, {{date}}. An admin has to book them.",
-    "bookHoldAdmin_other": "{{names}} said yes to {{show}}, {{date}}. An admin has to book them.",
-    "ask_one": "Asked {{count}} artist about {{show}}, {{date}}.",
-    "ask_other": "Asked {{count}} artists about {{show}}, {{date}}.",
-    "draft_one": "Drafted {{count}} contract for {{show}}, {{date}}. They send when you are happy with them.",
-    "draft_other": "Drafted {{count}} contracts for {{show}}, {{date}}. They send when you are happy with them.",
-    "notify": "Told {{names}} that {{show}}, {{date}} is off.",
-    "theCast": "the cast"
+    "book_one": "Booked {{names}} onto {{showTitle}}, {{date}}. They said yes, so the part is theirs.",
+    "book_other": "Booked {{names}} onto {{showTitle}}, {{date}}. They said yes, so the parts are theirs.",
+    "bookHold_one": "{{names}} said yes to {{showTitle}}, {{date}}. Book them and the part is theirs.",
+    "bookHold_other": "{{names}} said yes to {{showTitle}}, {{date}}. Book them and the parts are theirs.",
+    "bookHoldAdmin_one": "{{names}} said yes to {{showTitle}}, {{date}}. An admin has to book them.",
+    "bookHoldAdmin_other": "{{names}} said yes to {{showTitle}}, {{date}}. An admin has to book them.",
+    "ask_one": "Asked {{count}} {{artist}} about {{showTitle}}, {{date}}.",
+    "ask_other": "Asked {{count}} {{artists}} about {{showTitle}}, {{date}}.",
+    "draft_one": "Drafted {{count}} {{hireOrder}} for {{showTitle}}, {{date}}. They send when you are happy with them.",
+    "draft_other": "Drafted {{count}} {{hireOrders}} for {{showTitle}}, {{date}}. They send when you are happy with them.",
+    "notify": "Told {{names}} that {{showTitle}}, {{date}} is off.",
+    "theCast": "the {{cast}}"
   },
   "toast": {
-    "castToldSuccess": "Told the cast that {{title}} is off.",
-    "castToldError": "Could not tell the cast about {{title}}. Try again.",
+    "castToldSuccess": "Told the {{cast}} that {{title}} is off.",
+    "castToldError": "Could not tell the {{cast}} about {{title}}. Try again.",
     "askWithdrawnSuccess": "Withdrew the ask. {{context}}",
     "askWithdrawnError": "Could not withdraw the ask. {{context}} Try again.",
     "bookingUndoneSuccess_one": "Undid the booking. {{context}}",
     "bookingUndoneSuccess_other": "Undid {{count}} bookings. {{context}}",
     "bookingUndoneError": "Could not undo the booking. {{context}} Try again.",
     "bookingUndoneNothingChanged": "Nothing to undo. It already moved on, so refresh to see the latest.",
-    "castAskedSuccess": "Asked {{cast}} about {{title}}.",
-    "castAskedError": "Could not ask {{cast}} about {{title}}. Try again."
+    "castAskedSuccess": "Asked {{castName}} about {{title}}.",
+    "castAskedError": "Could not ask {{castName}} about {{title}}. Try again."
   },
   "sidebar": {
     "producer": {
       "title": "Autopilot on",
-      "body": "Asks go out at {{time}}. A yes becomes a booking. Contracts draft when a date fills.",
+      "body": "Asks go out at {{time}}. A yes becomes a booking. {{HireOrders}} draft when each {{showDate}} fills.",
       "link": "Take it off autopilot"
     },
     "artist": {
       "title": "How this works",
       "body": "You get asked by email. A yes books you on the spot, no confirming afterwards.",
-      "link": "Block dates you cannot play"
+      "link": "Block {{showDates}} you cannot take on"
     }
   }
 }

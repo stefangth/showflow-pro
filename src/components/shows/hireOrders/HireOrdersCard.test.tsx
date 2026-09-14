@@ -104,7 +104,7 @@ describe("HireOrdersCard", () => {
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage />,
     );
     expect(await screen.findByText("Contracts")).toBeInTheDocument();
-    expect(await screen.findByText(/fully filled\. ready for a contract/i)).toBeInTheDocument();
+    expect(await screen.findByText(/fully filled\. ready for its contract/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /generate contract/i })).toBeInTheDocument();
     // No em/en dashes in the banner copy.
     expect(document.body.textContent).not.toMatch(/[—–]/);
@@ -116,7 +116,7 @@ describe("HireOrdersCard", () => {
     renderWithProviders(
       <HireOrdersCard showDateId="sd-1" showDate={SHOW_DATE_FILLED} bookings={[CONFIRMED_BOOKING]} canManage />,
     );
-    expect(await screen.findByText(/fully filled\. ready for a contract/i)).toBeInTheDocument();
+    expect(await screen.findByText(/fully filled\. ready for its contract/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /generate contract/i })).toBeDisabled();
   });
 

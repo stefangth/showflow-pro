@@ -16,4 +16,12 @@ describe('TERMS glossary', () => {
     expect(termLabel('understudy', 'de')).toBe('Zweitbesetzung');
     expect(termLabel('hireOrder', 'de')).toBe('Engagementvertrag');
   });
+
+  it('termLabel follows the workspace type for the three vocabulary terms', () => {
+    expect(termLabel('cast', 'en')).toBe('Cast');
+    expect(termLabel('cast', 'en', 'staffing')).toBe('Team');
+    expect(termLabel('understudy', 'de', 'staffing')).toBe('Ersatz');
+    expect(termLabel('hireOrder', 'en', 'staffing')).toBe('Work order');
+    expect(termLabel('hold', 'de', 'staffing')).toBe('Wartet auf dich'); // untouched term
+  });
 });

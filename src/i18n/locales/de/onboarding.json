@@ -1,10 +1,14 @@
 {
   "steps": {
     "shows": {
-      "title": "Deine Produktionen eintragen",
-      "todoHint": "Synchronisiere von Airtable, importiere eine Tabelle oder füge eine Produktion manuell hinzu.",
-      "doneHint": "Deine Produktionen sind eingetragen.",
-      "ctaLabel": "Produktion hinzufügen"
+      "title": "Deine {{Productions}} eintragen",
+      "todoHint": "$t(onboarding:steps.shows.todoHint_{{kind}})",
+      "todoHint_production": "Synchronisiere von Airtable, importiere eine Tabelle oder füge eine Produktion manuell hinzu.",
+      "todoHint_staffing": "Synchronisiere von Airtable, importiere eine Tabelle oder füge einen Kunden manuell hinzu.",
+      "doneHint": "Deine {{Productions}} sind eingetragen.",
+      "ctaLabel": "$t(onboarding:steps.shows.ctaLabel_{{kind}})",
+      "ctaLabel_production": "Produktion hinzufügen",
+      "ctaLabel_staffing": "Kunden hinzufügen"
     },
     "flow": {
       "title": "Booking Flow",
@@ -13,62 +17,78 @@
       "ctaLabel": "Flow wählen"
     },
     "people": {
-      "title": "Deine Artists hinzufügen",
-      "todoHint": "Niemand kann gebucht werden, solange deine Besetzungsliste keine aktiven Artists hat.",
-      "doneHint": "Deine Besetzungsliste enthält aktive Artists.",
-      "ctaLabel": "Artists hinzufügen"
+      "title": "Deine {{Artists}} hinzufügen",
+      "todoHint": "Niemand kann gebucht werden, solange deine Personenliste keine aktiven {{Artists}} hat.",
+      "doneHint": "Deine Personenliste enthält aktive {{Artists}}.",
+      "ctaLabel": "{{Artists}} hinzufügen"
     },
     "slots": {
-      "title": "Besetzungsplan pro Produktion",
-      "todoHint": "Eine Produktion ohne Besetzungsplan gilt nie als voll.",
-      "doneHint": "Bei jeder Produktion festgelegt.",
-      "ctaLabel": "Besetzungsplan festlegen"
+      "title": "Aufteilung der Positionen pro {{Production}}",
+      "todoHint": "$t(onboarding:steps.slots.todoHint_{{kind}})",
+      "todoHint_production": "Eine Produktion ohne Aufteilung der Positionen gilt nie als voll.",
+      "todoHint_staffing": "Ein Kunde ohne Aufteilung der Positionen gilt nie als voll.",
+      "doneHint": "$t(onboarding:steps.slots.doneHint_{{kind}})",
+      "doneHint_production": "Bei jeder Produktion festgelegt.",
+      "doneHint_staffing": "Bei jedem Kunden festgelegt.",
+      "ctaLabel": "Aufteilung der Positionen festlegen"
     },
     "ladder": {
-      "title": "Besetzungsreihenfolge pro Stadt",
-      "todoHint": "Deine Besetzungen pro Stadt gereiht, die erste Besetzung wird zuerst angefragt.",
-      "doneHint": "Jede geplante Stadt hat eine Besetzung, die zuerst angefragt wird.",
+      "title": "Reihenfolge der {{Casts}} pro Stadt",
+      "todoHint": "$t(onboarding:steps.ladder.todoHint_{{kind}})",
+      "todoHint_production": "Deine Besetzungen pro Stadt gereiht, die erste Besetzung wird zuerst angefragt.",
+      "todoHint_staffing": "Deine Teams pro Stadt gereiht, das erste Team wird zuerst angefragt.",
+      "doneHint": "$t(onboarding:steps.ladder.doneHint_{{kind}})",
+      "doneHint_production": "Jede geplante Stadt hat eine Besetzung, die zuerst angefragt wird.",
+      "doneHint_staffing": "Jede geplante Stadt hat ein Team, das zuerst angefragt wird.",
       "ctaLabel": "Abdeckung prüfen"
     },
     "eligibility": {
       "title": "Wer angefragt werden kann",
-      "todoHint": "Welche Besetzungen zu welcher Produktion in welcher Stadt gehören.",
-      "doneHint": "Jede geplante Produktion und Stadt hat eine Besetzung.",
+      "todoHint": "$t(onboarding:steps.eligibility.todoHint_{{kind}})",
+      "todoHint_production": "Welche Besetzungen zu welcher Produktion in welcher Stadt gehören.",
+      "todoHint_staffing": "Welche Teams zu welchem Kunden in welcher Stadt gehören.",
+      "doneHint": "$t(onboarding:steps.eligibility.doneHint_{{kind}})",
+      "doneHint_production": "Jede geplante Produktion und Stadt hat eine Besetzung.",
+      "doneHint_staffing": "Jeder geplante Kunde und jede Stadt hat ein Team.",
       "ctaLabel": "Abdeckung prüfen"
     },
     "timing": {
       "title": "E-Mail-Zeitpunkt",
-      "todoHint": "Wann die Anfrage rausgeht, und wie lange Artists Zeit zum Antworten haben.",
+      "todoHint": "Wann die Anfrage rausgeht, und wie lange {{Artists}} Zeit zum Antworten haben.",
       "doneHint": "Uhrzeiten festgelegt. Du kannst sie jederzeit in den Einstellungen ändern.",
       "ctaLabel": "Zeitpunkt festlegen"
     },
     "team": {
-      "title": "Dein Production Team hinzufügen",
-      "todoHint": "Lade die Producer ein, die Termine planen, Anfragen versenden und die Besetzung buchen.",
-      "doneHint": "Dein Production Team ist eingeladen.",
+      "title": "Dein {{roleProducer}} hinzufügen",
+      "todoHint": "Lade dein {{roleProducer}} ein, das {{ShowDates}} plant, Anfragen versendet und die {{casts}} bucht.",
+      "doneHint": "Dein {{roleProducer}} ist eingeladen.",
       "ctaLabel": "Team einladen"
     },
     "blockDates": {
-      "title": "Sperre, was du nicht spielen kannst",
-      "todoHint": "Von dir gesperrte Termine fallen aus der Liste, bevor dich jemand bucht, sodass du nur von Terminen hörst, die passen.",
+      "title": "Sperre, was du nicht übernehmen kannst",
+      "todoHint": "$t(onboarding:steps.blockDates.todoHint_{{kind}})",
+      "todoHint_production": "Von dir gesperrte Termine fallen aus der Liste, bevor dich jemand bucht, sodass du nur von Terminen hörst, die passen.",
+      "todoHint_staffing": "Von dir gesperrte Schichten fallen aus der Liste, bevor dich jemand bucht, sodass du nur von Schichten hörst, die passen.",
       "doneHint": "Dein Kalender ist aktuell.",
       "ctaLabel": "Verfügbarkeit öffnen"
     },
     "letterhead": {
       "title": "Briefkopf",
-      "todoHint": "Dein Name, deine Adresse und dein Logo auf jedem Vertrag.",
-      "doneHint": "Festgelegt. Jeder Vertrag verwendet ihn.",
+      "todoHint": "Dein Name, deine Adresse und dein Logo auf jedem {{hireOrder}}.",
+      "doneHint": "Festgelegt. Jeder {{HireOrder}} verwendet ihn.",
       "ctaLabel": "Briefkopf festlegen"
     },
     "terms": {
       "title": "Bedingungen",
-      "todoHint": "Die Klauseln, die auf jedem Vertrag stehen.",
+      "todoHint": "Die Klauseln, die auf jedem {{hireOrder}} stehen.",
       "doneHint": "Eine Bedingungsvariante ist ausgewählt.",
       "ctaLabel": "Bedingungen wählen"
     },
     "countersign": {
       "title": "Gegenzeichnung",
-      "todoHint": "Wie der Artist einen Engagementvertrag unterschreibt.",
+      "todoHint": "$t(onboarding:steps.countersign.todoHint_{{kind}})",
+      "todoHint_production": "Wie der Artist den Engagementvertrag unterschreibt.",
+      "todoHint_staffing": "Wie das Teammitglied den Arbeitsauftrag unterschreibt.",
       "doneHint": "Gegenzeichnungsregel festgelegt.",
       "ctaLabel": "Gegenzeichnung festlegen"
     }
@@ -76,29 +96,31 @@
   "railHeader": {
     "booking": {
       "title": "Buchungen zum Laufen bringen",
-      "body": "Termine synchronisieren weiter und du kannst sie jetzt bearbeiten. Das hier braucht die erste Buchung."
+      "body": "{{ShowDates}} synchronisieren weiter und du kannst sie jetzt bearbeiten. Das hier braucht die erste Buchung."
     },
     "hire": {
-      "title": "Verträge startklar machen",
-      "body": "Du kannst jetzt Entwürfe erstellen. Das hier wird erst gebraucht, bevor der erste Vertrag rausgeht."
+      "title": "{{HireOrders}} startklar machen",
+      "body": "Du kannst jetzt Entwürfe erstellen. Das hier wird erst gebraucht, bevor der erste {{hireOrder}} rausgeht."
     }
   },
   "offFooter": {
     "booking": "Die Booking Engine ist für diese Organisation nicht aktiviert. Bitte deinen Account Manager, sie einzuschalten.",
-    "hire": "Verträge sind für diese Organisation ausgeschaltet. Bitte deinen Account Manager, sie einzuschalten."
+    "hire": "{{HireOrders}} sind für diese Organisation ausgeschaltet. Bitte deinen Account Manager, sie einzuschalten."
   },
   "bookingRules": {
     "offersWithTiers": {
       "title": "Anfragen der Reihe nach",
-      "hint": "Die erste Gruppe wird zuerst angefragt. Ist der Termin noch nicht voll, öffnet die nächste Gruppe später."
+      "hint": "$t(onboarding:bookingRules.offersWithTiers.hint_{{kind}})",
+      "hint_production": "Die erste Gruppe wird zuerst angefragt. Ist der Termin noch nicht voll, öffnet die nächste Gruppe später.",
+      "hint_staffing": "Die erste Gruppe wird zuerst angefragt. Ist die Schicht noch nicht voll, öffnet die nächste Gruppe später."
     },
     "directBooking": {
       "title": "Direktbuchung",
-      "hint": "Producer buchen direkt aus der Liste, wer angefragt werden kann."
+      "hint": "Das {{roleProducer}} bucht direkt aus der Liste, wer angefragt werden kann."
     },
     "offersByEmail": {
       "title": "Anfragen gehen per E-Mail raus",
-      "hint": "Artists antworten direkt aus der E-Mail. Deine Zeiteinstellungen entscheiden, ob sie sofort rausgeht oder auf die nächste tägliche Sendung wartet."
+      "hint": "{{Artists}} antworten direkt aus der E-Mail. Deine Zeiteinstellungen entscheiden, ob sie sofort rausgeht oder auf die nächste tägliche Sendung wartet."
     },
     "responseWindow": {
       "title": "Antwortzeit",
@@ -110,14 +132,16 @@
     "confirmManual": {
       "title": "Die Buchung braucht das letzte Wort"
     },
-    "confirmHint": "Eine angenommene Anfrage wartet auf das letzte Wort vom Producer. Das ist die Warteschlange auf dieser Seite.",
+    "confirmHint": "Eine angenommene Anfrage wartet auf das letzte Wort vom {{roleProducer}}. Das ist die Warteschlange auf dieser Seite.",
     "nothingToAccept": {
       "title": "Nichts anzunehmen",
-      "hint": "Ein Artist, den du einem Termin hinzufügst, ist gebucht. Er erscheint in dessen Kalender als gebucht."
+      "hint": "$t(onboarding:bookingRules.nothingToAccept.hint_{{kind}})",
+      "hint_production": "Ein Artist, den du einem Termin hinzufügst, ist gebucht. Er erscheint in dessen Kalender als gebucht.",
+      "hint_staffing": "Ein Teammitglied, das du einer Schicht hinzufügst, ist gebucht. Es erscheint in dessen Kalender als gebucht."
     }
   },
   "producerRole": {
-    "note": "Du bist im Production Team. Du planst Termine, versendest Anfragen und buchst die Besetzung. Personen einladen, Besetzungen und Einstellungen bleiben beim Admin.",
+    "note": "Du bist im {{roleProducer}}. Du planst {{ShowDates}}, versendest Anfragen und buchst die {{casts}}. Personen einladen, {{Casts}} und Einstellungen bleiben beim Admin.",
     "ruleTitle": "Was deine Rolle abdeckt"
   },
   "roleExplainer": {
@@ -126,21 +150,27 @@
   "hireRules": {
     "autoDrafted": {
       "title": "Automatisch erstellt bei Vollbesetzung",
-      "hint": "Wenn ein Termin voll besetzt ist, wird aus der gebuchten Besetzung ein Vertragsentwurf erstellt."
+      "hint": "$t(onboarding:hireRules.autoDrafted.hint_{{kind}})",
+      "hint_production": "Wenn ein Termin voll besetzt ist, wird aus der gebuchten Besetzung ein Entwurf für einen Engagementvertrag erstellt.",
+      "hint_staffing": "Wenn eine Schicht voll besetzt ist, wird aus dem gebuchten Team ein Entwurf für einen Arbeitsauftrag erstellt."
     },
     "issuingManual": {
       "title": "Ausstellen erfolgt manuell",
-      "hint": "Ein Producer prüft den Entwurf und stellt dem Artist das PDF aus."
+      "hint": "Das {{roleProducer}} prüft den Entwurf und stellt dem {{Artist}} das PDF aus."
     }
   },
   "artistRules": {
     "eligibilityFromCast": {
-      "title": "Wer angefragt wird, ergibt sich aus deiner Besetzung",
-      "hint": "Deine Besetzungen entscheiden, zu welchen Terminen du angefragt werden kannst."
+      "title": "$t(onboarding:artistRules.eligibilityFromCast.title_{{kind}})",
+      "title_production": "Wer angefragt wird, ergibt sich aus deiner Besetzung",
+      "title_staffing": "Wer angefragt wird, ergibt sich aus deinem Team",
+      "hint": "$t(onboarding:artistRules.eligibilityFromCast.hint_{{kind}})",
+      "hint_production": "Deine Besetzungen entscheiden, zu welchen Terminen du angefragt werden kannst.",
+      "hint_staffing": "Deine Teams entscheiden, zu welchen Schichten du angefragt werden kannst."
     },
     "offersArriveByEmail": {
       "title": "Anfragen kommen per E-Mail",
-      "hint": "Die Zeiteinstellung deines Producers entscheidet, ob das die tägliche Sendung ist oder der Moment, in dem du an der Reihe bist."
+      "hint": "Wie dein {{roleProducer}} die Zeiten gesetzt hat, entscheidet, ob das die tägliche Sendung ist oder der Moment, in dem du an der Reihe bist."
     },
     "responseWindow": {
       "title": "Du hast eine Antwortzeit",
@@ -148,11 +178,13 @@
     },
     "bookedDirectly": {
       "title": "Du wirst direkt gebucht",
-      "hint": "Es gibt keinen Anfrageschritt. Ein für dich gebuchter Termin erscheint in deinem Kalender als gebucht."
+      "hint": "$t(onboarding:artistRules.bookedDirectly.hint_{{kind}})",
+      "hint_production": "Es gibt keinen Anfrageschritt. Ein für dich gebuchter Termin erscheint in deinem Kalender als gebucht.",
+      "hint_staffing": "Es gibt keinen Anfrageschritt. Eine für dich gebuchte Schicht erscheint in deinem Kalender als gebucht."
     },
     "blockingIsNo": {
       "title": "Sperren ist deine Art, Nein zu sagen",
-      "hint": "Von dir gesperrte Termine fallen aus der Liste, aus der dein Producer bucht, und genau da hast du ein Wort mitzureden."
+      "hint": "Von dir gesperrte {{ShowDates}} fallen aus der Liste, aus der dein {{roleProducer}} bucht, und genau da hast du ein Wort mitzureden."
     }
   },
   "welcome": {
@@ -175,10 +207,12 @@
     },
     "producer": {
       "pendingNone": "Gerade wartet nichts auf dich.",
-      "pendingBody_one": "{{count}} Artist wartet darauf, dass du ihn buchst.",
-      "pendingBody_other": "{{count}} Artists warten darauf, dass du sie buchst.",
-      "emptyOffers": "Termine, Anfragen und Buchungen erscheinen hier, sobald der erste Import da ist.",
-      "emptyDirect": "Termine und Buchungen erscheinen hier, sobald der erste Import da ist.",
+      "pendingBody_one": "$t(onboarding:welcome.producer.pendingBody_{{kind}}_one)",
+      "pendingBody_production_one": "{{count}} Artist wartet darauf, dass du ihn buchst.",
+      "pendingBody_staffing_one": "{{count}} Teammitglied wartet darauf, dass du es buchst.",
+      "pendingBody_other": "{{count}} {{Artists}} warten darauf, dass du sie buchst.",
+      "emptyOffers": "{{ShowDates}}, Anfragen und Buchungen erscheinen hier, sobald der erste Import da ist.",
+      "emptyDirect": "{{ShowDates}} und Buchungen erscheinen hier, sobald der erste Import da ist.",
       "completeHeadline": "Du bist {{org}} beigetreten",
       "completePrimary": "Wie diese Organisation funktioniert",
       "completeSecondary": "Ausblenden",
@@ -194,16 +228,18 @@
     },
     "artist": {
       "completeHeadlineOffers": "Deine ersten Anfragen sind unterwegs",
-      "completeHeadlineDirect": "Deine ersten Termine sind unterwegs",
+      "completeHeadlineDirect": "Deine ersten {{ShowDates}} sind unterwegs",
       "completeBodyOffers": "Dein Konto ist eingerichtet. Ein paar Regeln entscheiden, wann dich eine Anfrage erreicht und wie lange du Zeit zum Antworten hast.",
-      "completeBodyDirect": "Dein Konto ist eingerichtet. Ein paar Regeln entscheiden, wie diese Organisation dich bucht, und Termine zu sperren ist dein Teil davon.",
+      "completeBodyDirect": "Dein Konto ist eingerichtet. Ein paar Regeln entscheiden, wie diese Organisation dich bucht, und {{ShowDates}} zu sperren ist dein Teil davon.",
       "completePrimary": "Wie das Buchen hier funktioniert",
       "completeSecondary": "Ausblenden",
       "completeProgressLabel": "Eingerichtet · {{total}} von {{total}}",
       "completeProgressHint": "Die Regeln, die du übernommen hast",
-      "incompleteHeadline": "{{org}} hat dich zur Besetzungsliste hinzugefügt",
-      "incompleteBodyOffers": "Anfragen kommen per E-Mail und landen auf dieser Seite. Sperre zuerst die Termine, die du nicht spielen kannst, damit du nur nach Terminen gefragt wirst, die passen.",
-      "incompleteBodyDirect": "Dein Producer bucht dich direkt, und bestätigte Termine landen auf dieser Seite. Sperre zuerst die Termine, die du nicht spielen kannst, damit sie aus der Liste fallen, bevor dich jemand bucht.",
+      "incompleteHeadline": "{{org}} hat dich zur Personenliste hinzugefügt",
+      "incompleteBodyOffers": "$t(onboarding:welcome.artist.incompleteBodyOffers_{{kind}})",
+      "incompleteBodyOffers_production": "Anfragen kommen per E-Mail und landen auf dieser Seite. Sperre zuerst die Termine, die du nicht übernehmen kannst, damit du nur nach Terminen gefragt wirst, die passen.",
+      "incompleteBodyOffers_staffing": "Anfragen kommen per E-Mail und landen auf dieser Seite. Sperre zuerst die Schichten, die du nicht übernehmen kannst, damit du nur nach Schichten gefragt wirst, die passen.",
+      "incompleteBodyDirect": "Dein {{roleProducer}} bucht dich direkt, und bestätigte {{ShowDates}} landen auf dieser Seite. Sperre zuerst die {{ShowDates}}, die du nicht übernehmen kannst, damit sie aus der Liste fallen, bevor dich jemand bucht.",
       "incompletePrimary": "Einrichtung starten",
       "incompleteSecondary": "Später",
       "incompleteProgressLabel": "Eingerichtet · {{filled}} von {{total}}",
@@ -216,7 +252,9 @@
     "completeTitle": "Die Regeln, die du übernommen hast",
     "completeBodyCanEdit": "Du kannst sie in den Einstellungen ändern, aber jede Zahl auf dieser Seite folgt ihnen heute.",
     "completeBodyProducer": "Du kannst diese nicht ändern, aber jede Zahl auf dieser Seite folgt ihnen.",
-    "completeBodyArtist": "Du kannst diese nicht ändern. Jeder Termin, für den du gebucht bist, folgt ihnen.",
+    "completeBodyArtist": "$t(onboarding:railHeaderCopy.completeBodyArtist_{{kind}})",
+    "completeBodyArtist_production": "Du kannst diese nicht ändern. Jeder Termin, für den du gebucht bist, folgt ihnen.",
+    "completeBodyArtist_staffing": "Du kannst diese nicht ändern. Jede Schicht, für die du gebucht bist, folgt ihnen.",
     "adminEyebrow": "Einrichtung",
     "adminTitle": "Bring den Arbeitsbereich zum Laufen",
     "adminBody": "Manche davon blockieren die erste Buchung. Nichts hier hindert dich, den Rest der App zu nutzen.",
@@ -226,12 +264,12 @@
     "producerBodyReadOnly": "Das kann nur ein Admin erledigen. Das steht hier, damit du weißt, warum die Seite leer ist, nicht damit du es behebst.",
     "artistEyebrow": "Einrichtung",
     "artistTitle": "Vor deiner ersten Buchung",
-    "artistBody": "Nichts davon blockiert irgendetwas. Es hält nur die Termine aus dem Weg, die du nicht spielen kannst."
+    "artistBody": "Nichts davon blockiert irgendetwas. Es hält nur die {{ShowDates}} aus dem Weg, die du nicht übernehmen kannst."
   },
   "collapsed": {
     "completeLabel": "Eingerichtet · fertig",
     "completeHintArtist": "Wie diese Organisation dich bucht",
-    "completeHintOrg": "Booking Engine, Termine, Besetzungsplan, dein Team",
+    "completeHintOrg": "Booking Engine, {{ShowDates}}, Aufteilung der Positionen, dein Team",
     "completeCtaArtist": "Wie das Buchen hier funktioniert",
     "completeCtaOrg": "Wie diese Organisation funktioniert",
     "incompleteLabelProducer": "Organisationseinrichtung läuft",
@@ -243,14 +281,24 @@
   },
   "coverage": {
     "ladder": {
-      "noFlow": "Deine Besetzungen pro Stadt gereiht, die erste Besetzung wird zuerst angefragt.",
-      "direct": "Deine Besetzungen pro Stadt gereiht. Du buchst Artists direkt, daher liest heute niemand diese Reihenfolge. Sie wird relevant, wenn du auf Anfragen umstellst.",
-      "offers": "Deine Besetzungen pro Stadt gereiht. Die erste Besetzung wird zuerst angefragt, dann die darunter."
+      "noFlow": "$t(onboarding:coverage.ladder.noFlow_{{kind}})",
+      "noFlow_production": "Deine Besetzungen pro Stadt gereiht, die erste Besetzung wird zuerst angefragt.",
+      "noFlow_staffing": "Deine Teams pro Stadt gereiht, das erste Team wird zuerst angefragt.",
+      "direct": "Deine {{Casts}} pro Stadt gereiht. Du buchst {{Artists}} direkt, daher liest heute niemand diese Reihenfolge. Sie wird relevant, wenn du auf Anfragen umstellst.",
+      "offers": "$t(onboarding:coverage.ladder.offers_{{kind}})",
+      "offers_production": "Deine Besetzungen pro Stadt gereiht. Die erste Besetzung wird zuerst angefragt, dann die darunter.",
+      "offers_staffing": "Deine Teams pro Stadt gereiht. Das erste Team wird zuerst angefragt, dann die darunter."
     },
     "eligibility": {
-      "what": "Welche Besetzungen zu einer Produktion in einer Stadt gehören.",
-      "direct": "Welche Besetzungen zu einer Produktion in einer Stadt gehören. Eine Produktion und Stadt ohne Treffer kann aus deiner gesamten aktiven Besetzungsliste gebucht werden, abzüglich aller, die an diesem Termin nicht frei sind oder eine erforderliche Fähigkeit nicht haben.",
-      "offers": "Welche Besetzungen zu einer Produktion in einer Stadt gehören. Ohne Treffer wird niemand angefragt."
+      "what": "$t(onboarding:coverage.eligibility.what_{{kind}})",
+      "what_production": "Welche Besetzungen zu einer Produktion in einer Stadt gehören.",
+      "what_staffing": "Welche Teams zu einem Kunden in einer Stadt gehören.",
+      "direct": "$t(onboarding:coverage.eligibility.direct_{{kind}})",
+      "direct_production": "Welche Besetzungen zu einer Produktion in einer Stadt gehören. Eine Produktion und Stadt ohne Treffer kann aus deiner gesamten aktiven Personenliste gebucht werden, abzüglich aller, die an diesem Termin nicht frei sind oder einen erforderlichen Skill nicht haben.",
+      "direct_staffing": "Welche Teams zu einem Kunden in einer Stadt gehören. Ein Kunde und eine Stadt ohne Treffer können aus deiner gesamten aktiven Personenliste gebucht werden, abzüglich aller, die in dieser Schicht nicht frei sind oder eine erforderliche Qualifikation nicht haben.",
+      "offers": "$t(onboarding:coverage.eligibility.offers_{{kind}})",
+      "offers_production": "Welche Besetzungen zu einer Produktion in einer Stadt gehören. Ohne Treffer wird niemand angefragt.",
+      "offers_staffing": "Welche Teams zu einem Kunden in einer Stadt gehören. Ohne Treffer wird niemand angefragt."
     }
   },
   "stageChain": {
@@ -273,83 +321,99 @@
     },
     "modules": {
       "booking": "Booking Engine",
-      "hire": "Verträge"
+      "hire": "{{HireOrders}}"
     },
     "tag": {
-      "yourCast": "Deine Besetzung",
+      "yourCast": "$t(onboarding:stageChain.tag.yourCast_{{kind}})",
+      "yourCast_production": "Deine Besetzung",
+      "yourCast_staffing": "Dein Team",
       "bookingEngine": "Booking Engine",
       "bookingEngineOff": "Booking Engine · aus",
       "bookingEngineDirect": "Booking Engine · direkt",
       "bookingEngineYours": "Booking Engine · deine",
-      "showsAndBookings": "Termine",
-      "hireOrders": "Verträge",
-      "hireOrdersOff": "Verträge · aus",
-      "hireOrdersManual": "Verträge · manuell"
+      "showsAndBookings": "{{ShowDates}}",
+      "hireOrders": "{{HireOrders}}",
+      "hireOrdersOff": "{{HireOrders}} · aus",
+      "hireOrdersManual": "{{HireOrders}} · manuell"
     },
     "artist": {
       "eligibilityName": "Wer angefragt werden kann",
-      "eligibilityOnLine": "Deine Besetzungen entscheiden, zu welchen Terminen du angefragt werden kannst.",
+      "eligibilityOnLine": "$t(onboarding:stageChain.artist.eligibilityOnLine_{{kind}})",
+      "eligibilityOnLine_production": "Deine Besetzungen entscheiden, zu welchen Terminen du angefragt werden kannst.",
+      "eligibilityOnLine_staffing": "Deine Teams entscheiden, zu welchen Schichten du angefragt werden kannst.",
       "eligibilityOnMetricLabel": "kann angefragt werden",
-      "eligibilityOffLine": "Kein Booking-Modul, daher erreichen dich hier keine Termine.",
+      "eligibilityOffLine": "Kein Booking-Modul, daher erreichen dich hier keine {{ShowDates}}.",
       "availabilityName": "Verfügbarkeit",
-      "availabilityDoneLine": "Nicht freie Termine werden nie angefragt.",
-      "availabilityMetricLabel": "nicht freie Termine",
+      "availabilityDoneLine": "Nicht freie {{ShowDates}} werden nie angefragt.",
+      "availabilityMetricLabel": "nicht freie {{ShowDates}}",
       "availabilityDoneChip": "Verfügbarkeit öffnen",
       "availabilityActLine": "Der einzige Schritt, der deiner ist.",
-      "availabilityActPrimary": "Termine sperren",
+      "availabilityActPrimary": "{{ShowDates}} sperren",
       "availabilityOffLine": "Nichts, wogegen du sperren könntest.",
       "offerName": "Anfrage",
       "offerImportedLine": "Eine tägliche Sendung um {{time}}. {{hours}} Stunden Zeit zum Antworten.",
       "offerMetricLabel": "kommt um {{hour}}",
-      "offerWaitsLine": "Eine tägliche Sendung um {{time}}, nie eine E-Mail pro Termin.",
-      "offerWaitsNeeds": "Braucht Termine für deine Besetzung",
+      "offerWaitsLine": "Eine tägliche Sendung um {{time}}, nie eine E-Mail pro {{ShowDate}}.",
+      "offerWaitsNeeds": "$t(onboarding:stageChain.artist.offerWaitsNeeds_{{kind}})",
+      "offerWaitsNeeds_production": "Braucht Termine für deine Besetzung",
+      "offerWaitsNeeds_staffing": "Braucht Schichten für dein Team",
       "bookedDirectlyName": "Direkt gebucht",
-      "bookedDirectlyLine": "Es gibt keinen Anfrageschritt. Ein gebuchter Termin erscheint als gebucht.",
+      "bookedDirectlyLine": "$t(onboarding:stageChain.artist.bookedDirectlyLine_{{kind}})",
+      "bookedDirectlyLine_production": "Es gibt keinen Anfrageschritt. Ein gebuchter Termin erscheint als gebucht.",
+      "bookedDirectlyLine_staffing": "Es gibt keinen Anfrageschritt. Eine gebuchte Schicht erscheint als gebucht.",
       "bookedDirectlyMetricLabel": "gebucht",
       "offerOffLine": "Es werden keine Anfragen von ShowFlow verschickt.",
-      "hireName": "Vertrag",
+      "hireName": "{{HireOrder}}",
       "hireOnLine": "Du unterschreibst im Browser. Das gegengezeichnete PDF landet in deiner Mail.",
       "hireOnMetricLabel": "zu unterschreiben",
-      "hireOffLine": "Dein Produktionsteam schickt dir die Unterlagen per E-Mail, sobald du gebucht bist.",
+      "hireOffLine": "Dein {{roleProducer}} schickt dir die Unterlagen per E-Mail, sobald du gebucht bist.",
       "hireOffNeeds": "Hier gibt es nichts für dich zu tun"
     },
     "org": {
       "offersName": "Anfragen",
       "bookDirectlyName": "Direkt buchen",
-      "offersLine": "Die erste Gruppe wird um {{hour}} angefragt, die nächste Gruppe öffnet 24 Stunden später, wenn der Termin noch nicht voll ist.",
-      "directLine": "Ein Producer bucht direkt aus der Liste, wer angefragt werden kann. Nichts anzunehmen.",
-      "datesName": "Termine",
-      "datesImportedLine_one": "{{count}} Termin ist in deinem Katalog.",
-      "datesImportedLine_other": "{{count}} Termine sind in deinem Katalog.",
-      "datesMetricLabel": "Termine drin",
-      "datesChipOpen": "Termine öffnen",
-      "datesChipSlots": "Besetzungsplan festlegen",
-      "datesActLine": "Nichts Nachgelagertes bedeutet etwas, solange keine Produktionen existieren.",
-      "datesActPrimaryImport": "Termine importieren",
-      "datesActPrimaryAdd": "Produktion hinzufügen",
-      "datesOffLine": "Termine und Buchungen laufen für diese Organisation nicht in ShowFlow.",
+      "offersLine": "$t(onboarding:stageChain.org.offersLine_{{kind}})",
+      "offersLine_production": "Die erste Gruppe wird um {{hour}} angefragt, die nächste Gruppe öffnet 24 Stunden später, wenn der Termin noch nicht voll ist.",
+      "offersLine_staffing": "Die erste Gruppe wird um {{hour}} angefragt, die nächste Gruppe öffnet 24 Stunden später, wenn die Schicht noch nicht voll ist.",
+      "directLine": "Das {{roleProducer}} bucht direkt aus der Liste, wer angefragt werden kann. Nichts anzunehmen.",
+      "datesName": "{{ShowDates}}",
+      "datesImportedLine_one": "{{count}} {{ShowDate}} ist in deinem Katalog.",
+      "datesImportedLine_other": "{{count}} {{ShowDates}} sind in deinem Katalog.",
+      "datesMetricLabel": "{{ShowDates}} drin",
+      "datesChipOpen": "{{ShowDates}} öffnen",
+      "datesChipSlots": "Aufteilung der Positionen festlegen",
+      "datesActLine": "Nichts Nachgelagertes bedeutet etwas, solange keine {{Productions}} existieren.",
+      "datesActPrimaryImport": "{{ShowDates}} importieren",
+      "datesActPrimaryAdd": "$t(onboarding:stageChain.org.datesActPrimaryAdd_{{kind}})",
+      "datesActPrimaryAdd_production": "Produktion hinzufügen",
+      "datesActPrimaryAdd_staffing": "Kunden hinzufügen",
+      "datesOffLine": "{{ShowDates}} und Buchungen laufen für diese Organisation nicht in ShowFlow.",
       "offersReadyMetricLabel": "anfragebereit",
-      "bookableMetricLabel": "buchbare Termine",
+      "bookableMetricLabel": "buchbare {{ShowDates}}",
       "offersPrimary": "Erste Gruppe anfragen",
       "offersChip": "Auswahl öffnen",
-      "offersWaitsNeeds": "Braucht einen Termin mit festgelegtem Besetzungsplan",
+      "offersWaitsNeeds": "$t(onboarding:stageChain.org.offersWaitsNeeds_{{kind}})",
+      "offersWaitsNeeds_production": "Braucht einen Termin mit festgelegter Aufteilung der Positionen",
+      "offersWaitsNeeds_staffing": "Braucht eine Schicht mit festgelegter Aufteilung der Positionen",
       "offersOffName": "Anfragen",
       "offersOffLine": "Keine Gruppen zum Anfragen, keine tägliche Sendung, keine Direktauswahl.",
       "confirmName": "Buchen",
-      "confirmLine": "Eine angenommene Anfrage ist erst eine Buchung, wenn ein Producer sie bucht.",
+      "confirmLine": "Eine angenommene Anfrage ist erst eine Buchung, wenn das {{roleProducer}} sie bucht.",
       "confirmNeeds": "Braucht ein Ja",
       "confirmedName": "Sofort gebucht",
       "confirmedLine": "Eine Direktbuchung ist gebucht, sobald sie erstellt wird. Keine Warteschlange.",
       "confirmedMetricLabel": "gebucht",
       "confirmOffLine": "Hier gibt es nichts zu buchen.",
-      "hireName": "Vertrag",
-      "hireOnLine": "Du kannst jetzt Entwürfe erstellen. Das hier wird erst gebraucht, bevor der erste Vertrag rausgeht.",
+      "hireName": "{{HireOrder}}",
+      "hireOnLine": "Du kannst jetzt Entwürfe erstellen. Das hier wird erst gebraucht, bevor der erste {{hireOrder}} rausgeht.",
       "hireMetricLabel": "Entwürfe",
-      "hireChip": "Vertrag entwerfen",
-      "hireManualLine": "Ohne Booking-Modul ist jeder Vertrag ein manuelles Engagement ohne verknüpften Termin.",
-      "hireManualMetricLabel": "Verträge",
-      "hireManualPrimary": "Neuer Vertrag",
-      "hireOffLine": "Gebuchte Termine verlassen ShowFlow als CSV.",
+      "hireChip": "{{HireOrder}} entwerfen",
+      "hireManualLine": "$t(onboarding:stageChain.org.hireManualLine_{{kind}})",
+      "hireManualLine_production": "Ohne Booking-Modul ist jeder Engagementvertrag ein manuelles Engagement ohne verknüpften Termin.",
+      "hireManualLine_staffing": "Ohne Booking-Modul ist jeder Arbeitsauftrag ein manuelles Engagement ohne verknüpfte Schicht.",
+      "hireManualMetricLabel": "{{HireOrders}}",
+      "hireManualPrimary": "Neuer {{HireOrder}}",
+      "hireOffLine": "Gebuchte {{ShowDates}} verlassen ShowFlow als CSV.",
       "hireOffNeeds": "Wird von deinem Account Manager eingeschaltet"
     },
     "headline": {
@@ -363,37 +427,41 @@
       "nothingOnQueueHint": "Beispielzeilen, sichtbar sobald ein Modul an ist.",
       "artistProgressLabel": "Eingerichtet · {{filled}} von {{total}}",
       "artistImportedHeadlineOffers": "Deine erste Anfrage kommt morgen um {{hour}}",
-      "artistImportedHeadlineDirect": "Dein Producer bucht dich direkt",
-      "artistImportedBodyOffers_one": "Du hast {{count}} Termin als nicht frei markiert, daher fragt die tägliche Sendung nur nach Terminen, die passen.",
-      "artistImportedBodyOffers_other": "Du hast {{count}} Termine als nicht frei markiert, daher fragt die tägliche Sendung nur nach Terminen, die passen.",
-      "artistImportedBodyDirect": "Nicht freie Termine fallen aus der Liste, aus der dein Producer bucht. Genau da hast du ein Wort mitzureden.",
+      "artistImportedHeadlineDirect": "Dein {{roleProducer}} bucht dich direkt",
+      "artistImportedBodyOffers_one": "$t(onboarding:stageChain.headline.artistImportedBodyOffers_{{kind}}_one)",
+      "artistImportedBodyOffers_production_one": "Du hast {{count}} Termin als nicht frei markiert, daher fragt die tägliche Sendung nur nach Terminen, die passen.",
+      "artistImportedBodyOffers_staffing_one": "Du hast {{count}} Schicht als nicht frei markiert, daher fragt die tägliche Sendung nur nach Schichten, die passen.",
+      "artistImportedBodyOffers_other": "$t(onboarding:stageChain.headline.artistImportedBodyOffers_{{kind}}_other)",
+      "artistImportedBodyOffers_production_other": "Du hast {{count}} Termine als nicht frei markiert, daher fragt die tägliche Sendung nur nach Terminen, die passen.",
+      "artistImportedBodyOffers_staffing_other": "Du hast {{count}} Schichten als nicht frei markiert, daher fragt die tägliche Sendung nur nach Schichten, die passen.",
+      "artistImportedBodyDirect": "Nicht freie {{ShowDates}} fallen aus der Liste, aus der dein {{roleProducer}} bucht. Genau da hast du ein Wort mitzureden.",
       "artistImportedHintOffers": "Du hast {{hours}} Stunden Zeit zum Antworten",
       "artistImportedHintDirect": "Nichts anzunehmen",
       "artistImportedProgressHint": "Zählt auch als erledigt, sobald du Verfügbarkeit geöffnet hast. Ein leerer Kalender ist eine gültige Antwort.",
-      "artistRosterHeadline": "{{org}} hat dich zur Besetzungsliste hinzugefügt",
+      "artistRosterHeadline": "{{org}} hat dich zur Personenliste hinzugefügt",
       "artistRosterBodyHasSteps": "Ein Schritt ist deiner, und der dauert zwei Minuten. Alles andere auf dieser Seite legt die Organisation fest.",
       "artistRosterBodyNoSteps": "Alles auf dieser Seite legt die Organisation fest. Hier gibt es nichts für dich zu tun.",
       "artistRosterHintHasSteps": "Etwa 2 Minuten",
       "artistRosterHintNoSteps": "Hier nichts zu tun",
-      "artistRosterProgressHintHasSteps": "Nichts davon blockiert irgendetwas. Es hält nicht spielbare Termine aus dem Weg.",
+      "artistRosterProgressHintHasSteps": "Nichts davon blockiert irgendetwas. Es hält die {{ShowDates}}, die du nicht übernehmen kannst, aus dem Weg.",
       "artistRosterProgressHintNoSteps": "Auf deiner Seite gibt es nichts einzurichten.",
       "artistGhost": "Wie das Buchen hier funktioniert",
-      "artistQueueTitle": "Deine Termine",
+      "artistQueueTitle": "Deine {{ShowDates}}",
       "artistQueueHint": "Live. Das sind deine echten Inhalte, keine Vorschau.",
       "orgProgressLabelAdmin": "Eingerichtet · {{filled}} von {{total}}",
       "orgProgressLabelOther": "Organisationseinrichtung · {{filled}} von {{total}}",
-      "hireOnlyHeadline": "Verträge ist das einzige laufende Modul",
-      "hireOnlyBody": "Keine Termine, Anfragen oder Buchungen in ShowFlow. Jeder Vertrag ist ein manuelles Engagement, daher sind die drei Schritte unten die gesamte Einrichtung.",
+      "hireOnlyHeadline": "{{HireOrders}} ist das einzige laufende Modul",
+      "hireOnlyBody": "Keine {{ShowDates}}, Anfragen oder Buchungen in ShowFlow. Jeder {{HireOrder}} ist ein manuelles Engagement, daher sind die drei Schritte unten die gesamte Einrichtung.",
       "hireOnlyGhost": "Wie diese Organisation funktioniert",
       "hireOnlyHint": "Zwei der drei blockieren das Ausstellen",
-      "hireOnlyProgressHint": "Du kannst jetzt einen Vertrag entwerfen. Das hier wird erst gebraucht, bevor der erste rausgeht.",
-      "orgImportedLanded_one": "{{count}} Termin ist eingegangen.",
-      "orgImportedLanded_other": "{{count}} Termine sind eingegangen.",
+      "hireOnlyProgressHint": "Du kannst jetzt einen {{hireOrder}} entwerfen. Das hier wird erst gebraucht, bevor der erste rausgeht.",
+      "orgImportedLanded_one": "{{count}} {{ShowDate}} ist eingegangen.",
+      "orgImportedLanded_other": "{{count}} {{ShowDates}} sind eingegangen.",
       "orgImportedLandedOffersClause": "{{readyToOffer}} davon können in der nächsten täglichen Sendung angefragt werden.",
       "orgImportedLandedBookableClause_one": "{{count}} ist jetzt buchbar.",
       "orgImportedLandedBookableClause_other": "{{count}} sind jetzt buchbar.",
-      "orgImportedBodyOffers": "Stufe 01 läuft. Die restlichen Termine haben keinen Besetzungsplan, daher überspringt die tägliche Sendung sie.",
-      "orgImportedBodyDirect": "Stufe 01 läuft. Ein Producer bucht direkt aus der Liste, wer angefragt werden kann. Es gibt keinen Anfrageschritt.",
+      "orgImportedBodyOffers": "Stufe 01 läuft. Die restlichen {{ShowDates}} haben keine Aufteilung der Positionen, daher überspringt die tägliche Sendung sie.",
+      "orgImportedBodyDirect": "Stufe 01 läuft. Das {{roleProducer}} bucht direkt aus der Liste, wer angefragt werden kann. Es gibt keinen Anfrageschritt.",
       "orgGhostHowItWorks": "Wie diese Organisation funktioniert",
       "orgGhostOutstanding": "Was noch offen ist",
       "orgImportedHintOffers": "Die erste Gruppe wird um {{time}} angefragt",
@@ -401,25 +469,25 @@
       "orgProgressHintReadOnly": "Die mit Admin markierten Schritte sind nicht deine. Der Rest schon.",
       "orgImportedProgressHint": "Die verbliebenen Schritte stehen in der Stufe, die sie aufhalten.",
       "orgEmptyHeadlineProducer": "{{org}} wird noch eingerichtet",
-      "orgEmptyHeadlineAdmin": "Die Kette läuft noch nicht. Eine Sache startet sie: Termine.",
-      "orgEmptyBodyProducer": "Die Booking Engine ist an, aber es gibt noch keine Termine. Deshalb ist diese Seite leer, kein Fehler.",
+      "orgEmptyHeadlineAdmin": "Die Kette läuft noch nicht. Eine Sache startet sie: {{ShowDates}}.",
+      "orgEmptyBodyProducer": "Die Booking Engine ist an, aber es gibt noch keine {{ShowDates}}. Deshalb ist diese Seite leer, kein Fehler.",
       "orgEmptyBodyAdmin": "Die Booking Engine ist an und konfiguriert. Jeder noch nötige Schritt steht in der Stufe, die er freischaltet.",
       "orgEmptyGhostHowItWillWork": "Wie diese Organisation funktionieren wird",
       "orgEmptyHintAdmin": "Etwa 15 Minuten",
       "orgEmptyHintCanEdit": "Die kannst du auch erledigen",
-      "orgEmptyHintReadOnly": "Produktionen hinzufügen ist deins, die Einstellungen nicht",
+      "orgEmptyHintReadOnly": "{{Productions}} hinzufügen ist deins, die Einstellungen nicht",
       "orgEmptyProgressHint": "Nichts hier hindert dich, den Rest der App zu nutzen.",
       "orgQueueTitle": "Was aus dieser Seite wird",
-      "orgQueueHint": "Beispielzeilen. Deine ersetzen sie, sobald die Organisation Termine hat."
+      "orgQueueHint": "Beispielzeilen. Deine ersetzen sie, sobald die Organisation {{ShowDates}} hat."
     },
     "result": {
       "eyebrow": "{{org}} · erster Start",
-      "chainTitleArtist": "Wie ein Termin dich erreicht",
-      "chainTitleOrg": "Wie sich ein Termin bewegt",
+      "chainTitleArtist": "Wie {{ShowDates}} dich erreichen",
+      "chainTitleOrg": "Wie sich {{ShowDates}} bewegen",
       "sideTitleNothingOn": "Die App ist offen, es läuft nur nichts",
       "sideTitleDefault": "Nichts hier blockiert den Rest der App",
-      "sideBodyProducer": "Du bist im Production Team. Du planst Termine, versendest Anfragen und buchst die Besetzung. Personen einladen, Besetzungen und Einstellungen bleiben beim Admin.",
-      "sideBodyArtist": "Sperren ist deine Art, Nein zu sagen. Nicht freie Termine fallen aus der Liste, bevor dich jemand bucht.",
+      "sideBodyProducer": "Du bist im {{roleProducer}}. Du planst {{ShowDates}}, versendest Anfragen und buchst die {{casts}}. Personen einladen, {{Casts}} und Einstellungen bleiben beim Admin.",
+      "sideBodyArtist": "Sperren ist deine Art, Nein zu sagen. Nicht freie {{ShowDates}} fallen aus der Liste, bevor dich jemand bucht.",
       "sideBodyDefault": "Manche Schritte oben blockieren die erste Buchung. Die App selbst ist offen, und zwei lohnenswerte Dinge sind gar keine Schritte."
     },
     "side": {
@@ -429,7 +497,7 @@
       "chats": "Chats",
       "howBookingWorksHere": "Wie das Buchen hier funktioniert",
       "rulesYouInherited": "Die Regeln, die du übernommen hast",
-      "messageOffice": "Schreib deinem Produktionsteam",
+      "messageOffice": "Schreib deinem {{roleProducer}}",
       "blockingIsHowYouSayNo": "Sperren ist deine Art, Nein zu sagen",
       "availability": "Verfügbarkeit",
       "seeWhatEachRoleCanDo": "Sieh, was jede Rolle kann",

@@ -2,24 +2,24 @@ import { ROUTES } from '@/config/app.config';
 import type { MiniDef, MiniSteps } from '../types';
 
 const STEP1 = {
-  label: { en: 'One thread per date', de: 'Ein Thread je Termin' },
+  label: { en: 'One thread per {{showDate}}', de: 'Ein Thread je {{showDate}}' },
   text: {
-    en: 'Threads are created per show date. There is no free-form channel to keep track of.',
-    de: 'Threads entstehen je Showtermin. Es gibt keinen freien Kanal, den du im Blick behalten musst.',
+    en: 'Threads are created per {{showDate}}. There is no free-form channel to keep track of.',
+    de: 'Threads entstehen je {{showDate}}. Es gibt keinen freien Kanal, den du im Blick behalten musst.',
   },
 };
 const STEP2 = {
   label: { en: 'Who is in it', de: 'Wer dabei ist' },
   text: {
-    en: 'Membership follows the booking. An artist joins when they accept and leaves if it is cancelled.',
-    de: 'Die Mitgliedschaft folgt der Buchung. Ein Artist kommt beim Annehmen dazu und geht bei einer Stornierung wieder raus.',
+    en: 'Membership follows the booking. {{Artists}} join when they accept and leave if it is cancelled.',
+    de: 'Die Mitgliedschaft folgt der Buchung. {{Artists}} kommen beim Annehmen dazu und gehen bei einer Stornierung wieder raus.',
   },
 };
 const STEP3 = {
-  label: { en: 'Talk about the date', de: 'Über den Termin reden' },
+  label: { en: 'Talk about the {{showDate}}', de: 'Über {{showDates}} reden' },
   text: {
-    en: 'Everything about one date sits in one place, next to the cast and the times it refers to.',
-    de: 'Alles zu einem Termin liegt an einem Ort, direkt neben der Besetzung und den zugehörigen Zeiten.',
+    en: 'Everything about one {{showDate}} sits in one place, next to the {{cast}} and the times it refers to.',
+    de: 'Alles, was {{ShowDates}} betrifft, liegt an einem Ort, direkt neben den {{casts}} und den zugehörigen Zeiten.',
   },
 };
 
@@ -30,8 +30,8 @@ const admin: MiniSteps = [
   {
     label: { en: 'Archived', de: 'Archiviert' },
     text: {
-      en: 'A thread freezes 30 days past the show date. Admins keep full access to archived threads.',
-      de: 'Ein Thread friert 30 Tage nach dem Showtermin ein. Admins behalten vollen Zugriff auf archivierte Threads.',
+      en: 'A thread freezes 30 days past the {{showDate}}. Admins keep full access to archived threads.',
+      de: 'Ein Thread friert 30 Tage nach dem Datum ein. Admins behalten vollen Zugriff auf archivierte Threads.',
     },
   },
 ];
@@ -43,18 +43,18 @@ const producer: MiniSteps = [
   {
     label: { en: 'Archived', de: 'Archiviert' },
     text: {
-      en: 'A thread freezes 30 days past the show date. It stays readable for everyone who was in it.',
-      de: 'Ein Thread friert 30 Tage nach dem Showtermin ein. Er bleibt für alle lesbar, die dabei waren.',
+      en: 'A thread freezes 30 days past the {{showDate}}. It stays readable for everyone who was in it.',
+      de: 'Ein Thread friert 30 Tage nach dem Datum ein. Er bleibt für alle lesbar, die dabei waren.',
     },
   },
 ];
 
 const artist: MiniSteps = [
   {
-    label: { en: 'Only your dates', de: 'Nur deine Termine' },
+    label: { en: 'Only your {{showDates}}', de: 'Nur deine {{showDates}}' },
     text: {
-      en: 'You see a thread for each date you are booked on. There is nothing else to scroll through.',
-      de: 'Du siehst einen Thread für jeden Termin, für den du gebucht bist. Mehr gibt es nicht zu scrollen.',
+      en: 'You see a thread for each {{showDate}} you are booked on. There is nothing else to scroll through.',
+      de: 'Du siehst einen Thread für alle {{showDates}}, für die du gebucht bist. Mehr gibt es nicht zu scrollen.',
     },
   },
   {
@@ -65,17 +65,17 @@ const artist: MiniSteps = [
     },
   },
   {
-    label: { en: 'Ask about the date', de: 'Zum Termin fragen' },
+    label: { en: 'Ask about the {{showDate}}', de: '{{ShowDate}} besprechen' },
     text: {
-      en: 'Call times, changes and questions live next to the date they are about, not in your inbox.',
-      de: 'Startzeiten, Änderungen und Fragen stehen neben dem Termin, um den es geht, nicht in deinem Postfach.',
+      en: 'Call times, changes and questions live next to the {{showDate}} they are about, not in your inbox.',
+      de: 'Startzeiten, Änderungen und Fragen stehen im passenden Thread, nicht in deinem Postfach.',
     },
   },
   {
     label: { en: 'Archived', de: 'Archiviert' },
     text: {
-      en: 'A thread freezes 30 days past the show date. You keep reading it, you just cannot post.',
-      de: 'Ein Thread friert 30 Tage nach dem Showtermin ein. Du liest weiter mit, kannst nur nichts mehr posten.',
+      en: 'A thread freezes 30 days past the {{showDate}}. You keep reading it, you just cannot post.',
+      de: 'Ein Thread friert 30 Tage nach dem Datum ein. Du liest weiter mit, kannst nur nichts mehr posten.',
     },
   },
 ];

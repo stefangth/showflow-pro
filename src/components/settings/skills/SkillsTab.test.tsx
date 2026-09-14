@@ -103,7 +103,7 @@ describe("SkillsTab", () => {
     expect(screen.getByTestId("skill-row-skill-1")).toBeInTheDocument();
     expect(screen.getByTestId("skill-row-skill-2")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText("Find a skill"), { target: { value: "vocal" } });
+    fireEvent.change(screen.getByPlaceholderText("Find skills"), { target: { value: "vocal" } });
 
     expect(screen.getByTestId("skill-row-skill-1")).toBeInTheDocument();
     expect(screen.queryByTestId("skill-row-skill-2")).not.toBeInTheDocument();
@@ -112,7 +112,7 @@ describe("SkillsTab", () => {
 
   it("shows a no-match message when the search filters out every row", () => {
     renderTab();
-    fireEvent.change(screen.getByPlaceholderText("Find a skill"), { target: { value: "zzz-no-match" } });
+    fireEvent.change(screen.getByPlaceholderText("Find skills"), { target: { value: "zzz-no-match" } });
     expect(screen.getByText("No skills match your search.")).toBeInTheDocument();
   });
 
@@ -148,7 +148,7 @@ describe("SkillsTab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create skill" }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('A skill named "vocals" already exists.');
+      expect(toast.error).toHaveBeenCalledWith('The skill "vocals" already exists.');
     });
     const calls = (client.calls ?? []) as { table: string; method: string }[];
     expect(calls.find((c) => c.table === "skills" && c.method === "insert")).toBeUndefined();
@@ -184,7 +184,7 @@ describe("SkillsTab", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save name" }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('A skill named "Puppetry" is archived. Use Restore to bring it back.');
+      expect(toast.error).toHaveBeenCalledWith('The skill "Puppetry" is archived. Use Restore to bring it back.');
     });
     const calls = (client.calls ?? []) as { table: string; method: string }[];
     expect(calls.find((c) => c.table === "skills" && c.method === "update")).toBeUndefined();

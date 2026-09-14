@@ -10,9 +10,9 @@
     "emailHint": "Wo Anmeldelinks und Anfragen ankommen.",
     "emailFixed": "Fest",
     "displayName": "Anzeigename",
-    "displayNameHint": "Wird auf Besetzungslisten und in Termin-Chats angezeigt.",
+    "displayNameHint": "Wird auf Personenlisten und in {{ShowDate}}-Chats angezeigt.",
     "phone": "Telefon",
-    "contactNote": "Getrennt von den Kontodaten oben: Admins und das Production Team in deiner Organisation sehen die Kontaktdaten auf deinem Artist-Datensatz, damit sie dich zu Buchungen erreichen können.",
+    "contactNote": "Getrennt von den Kontodaten oben: Admins und das {{roleProducer}} in deiner Organisation sehen die Kontaktdaten auf deinem {{Artist}}-Datensatz, damit sie dich zu Buchungen erreichen können.",
     "save": "Speichern",
     "saving": "Speichert…",
     "saved": "Profil gespeichert"
@@ -57,7 +57,7 @@
     }
   },
   "delete": {
-    "hireOrdersNote": "Bereits von dir zugestimmte, unterzeichnete Engagementverträge werden für die Unterlagen der Organisation aufbewahrt.",
+    "hireOrdersNote": "Bereits von dir zugestimmte, unterzeichnete {{hireOrders}} werden für die Unterlagen der Organisation aufbewahrt.",
     "trigger": "Löschen",
     "dialogTitle": "Dein Konto löschen?",
     "confirmBefore": "Dies entfernt dein Konto und deine persönlichen Daten dauerhaft. Tippe",
@@ -75,12 +75,12 @@
     "blockedDatesHint_one": "{{count}} gesperrt. Bearbeiten geht in Verfügbarkeit.",
     "blockedDatesHint_other": "{{count}} gesperrt. Bearbeiten geht in Verfügbarkeit.",
     "blockedDatesHintZero": "Keine gesperrt. Bearbeiten geht in Verfügbarkeit.",
-    "office": "Nachricht an dein Produktionsteam",
+    "office": "Nachricht an dein {{roleProducer}}",
     "officeHint": "Chats. Für alles, was du hier nicht ändern kannst."
   },
   "language": {
     "title": "Sprache",
     "hint": "Deine App-Sprache. E-Mails und PDFs folgen der Workspace-Sprache, die die Organisation gewählt hat."
   },
-  "sidebarNote": "Kein Setup, kein Fortschritt, kein Erklärstreifen. Das Konto eines Artists sind vier Gruppen und wächst nie zu einem Assistenten."
+  "sidebarNote": "Kein Setup, kein Fortschritt, kein Erklärstreifen. Das {{Artist}}-Konto sind vier Gruppen und wächst nie zu einem Assistenten."
 }

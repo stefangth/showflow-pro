@@ -9,7 +9,7 @@
     "retry": "Retry",
     "groups": {
       "Booking engine": "Booking engine",
-      "Hire orders": "Contracts",
+      "Hire orders": "{{HireOrders}}",
       "Accounts & access": "Accounts & access",
       "System": "System"
     },

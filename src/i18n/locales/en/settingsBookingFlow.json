@@ -28,7 +28,7 @@
     "custom": "Custom",
     "describe": {
       "paused": "Booking flow paused. No new asks, reminders, daily sends or confirmations are sent.",
-      "directBooking": "Artists are booked directly; nobody has to answer first.",
+      "directBooking": "{{Artists}} are booked directly; nobody has to answer first.",
       "tierAuto": "The first ask goes out automatically",
       "tierManual": "You send each ask yourself",
       "deliveryImmediate": "asks go out immediately",
@@ -62,60 +62,60 @@
     },
     "steps": {
       "dateCreated": {
-        "title": "Date created",
-        "desc": "Via Airtable sync or in-app; either way the date enters the flow here."
+        "title": "{{ShowDate}} created",
+        "desc": "Via Airtable sync or in-app; either way the {{showDate}} enters the flow here."
       },
       "openOfferTier": {
         "title": "Send the first ask",
         "desc": "Asks everyone who can be asked in that group.",
-        "autoOpenLabel": "Ask the first group automatically when a new date is ready",
+        "autoOpenLabel": "Ask the first group automatically when a new {{showDate}} is ready",
         "autoOpenAria": "Auto-ask the first group",
         "autoEscalateLabel": "Move to the next group automatically when the answer-by time closes short",
         "autoEscalateAria": "Auto-move to the next group",
-        "atRiskLabel": "Alert the production team when the group being asked cannot fill the remaining parts",
+        "atRiskLabel": "Alert the {{roleProducer}} when the group being asked cannot fill the remaining parts",
         "atRiskAria": "At-risk alerts",
-        "atRiskHelper": "Checked hourly. An alert is sent when booked artists plus live pending asks are fewer than the parts needed."
+        "atRiskHelper": "Checked hourly. An alert is sent when booked {{artists}} plus live pending asks are fewer than the parts needed."
       },
       "notifyArtists": {
-        "title": "Notify artists",
-        "desc": "How and when asks reach artists. The answer-by clock starts at delivery.",
+        "title": "Notify {{artists}}",
+        "desc": "How and when asks reach {{artists}}. The answer-by clock starts at delivery.",
         "deliveryGroupAria": "Ask delivery",
         "dailyDigest": "Daily send · {{hour}}",
         "immediate": "Immediately",
         "digestHourLabel": "Daily send hour (Berlin, Germany)",
         "responseWindowLabel": "Answer by (h)",
-        "expiryReminderLabel": "Remind artists 24 h before they need to answer",
+        "expiryReminderLabel": "Remind {{artists}} 24 h before they need to answer",
         "expiryReminderAria": "Expiry reminder",
         "referenceFieldLabel": "Reference field",
         "referenceFieldAria": "Reference field",
         "referenceFieldOptions": {
-          "show": "Production label (default)",
+          "show": "{{Production}} label (default)",
           "program": "Program only",
           "custom": "Custom field…"
         }
       },
       "artistAcceptance": {
-        "title": "Artist acceptance",
-        "desc": "Artists say yes or no from their calendar. Off means producers book directly, with no asks at all.",
-        "aria": "Artist acceptance",
-        "offNotice": "Asks, daily sends, and answer-by times are skipped. Producers book from the who-can-be-asked list; the artist's first touchpoint is the confirmation."
+        "title": "{{Artist}} acceptance",
+        "desc": "{{Artists}} say yes or no from their calendar. Off means {{roleProducer}} books directly, with no asks at all.",
+        "aria": "{{Artist}} acceptance",
+        "offNotice": "Asks, daily sends, and answer-by times are skipped. {{roleProducer}} books from the who-can-be-asked list; the first touchpoint for the {{artist}} is the confirmation."
       },
       "producerConfirmation": {
         "title": "The last word",
-        "desc": "You review artists who said yes and confirm the cast. Off means a yes books it immediately.",
+        "desc": "You review {{artists}} who said yes and confirm the {{cast}}. Off means a yes books it immediately.",
         "aria": "The last word",
-        "offNotice": "With artist acceptance off, booking the artist is itself the confirmation, so this step can't be skipped."
+        "offNotice": "With {{artist}} acceptance off, booking the {{artist}} is itself the confirmation, so this step can't be skipped."
       },
       "confirmationDigest": {
         "title": "Confirmation send",
-        "desc": "Daily summary email to newly booked artists.",
+        "desc": "Daily summary email to newly booked {{artists}}.",
         "hourLabel": "Hour (Berlin, Germany)",
         "aria": "Confirmation send"
       },
       "understudyPromotion": {
-        "title": "Understudy promotion",
-        "desc": "When a main-cast booking cancels, the longest-waiting understudy who said yes is promoted automatically.",
-        "aria": "Understudy promotion"
+        "title": "{{Understudy}} promotion",
+        "desc": "When a main {{cast}} booking cancels, the longest-waiting {{understudy}} who said yes is promoted automatically.",
+        "aria": "{{Understudy}} promotion"
       }
     }
   }

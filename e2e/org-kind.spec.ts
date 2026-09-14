@@ -37,8 +37,26 @@ test.describe("Workspace type", () => {
     await page.getByRole("tab", { name: /^organization\b/i }).click();
     await expect(page.getByLabel(/workspace type/i)).toContainText(/staffing agency/i);
 
+    // The vocabulary follows the org: the sidebar now reads staffing nouns. The
+    // Shifts link (bookings) can grow a trailing count badge, so tolerate one.
+    await expect(page.getByRole("link", { name: /^people$/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^shifts(\s+\d+)?$/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^artists$/i })).toHaveCount(0);
+
     const { data } = await adminClient().from("organizations").select("org_kind, org_kind_set_at").eq("id", BOOTSTRAP_ORG_ID).single();
     expect(data?.org_kind).toBe("staffing");
     expect(data?.org_kind_set_at).not.toBeNull();
+  });
+
+  test("switching back restores the production vocabulary", async ({ page }) => {
+    await seedConsent(page);
+    await loginAsAndAwaitDashboard(page, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD);
+    await navViaSidebar(page, /^settings$/i);
+    await page.getByRole("tab", { name: /^organization\b/i }).click();
+    await page.getByLabel(/workspace type/i).click();
+    await page.getByRole("option", { name: /live production/i }).click();
+    await expect(page.getByText(/workspace type updated/i)).toBeVisible();
+    await expect(page.getByRole("link", { name: /^artists$/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^dates(\s+\d+)?$/i })).toBeVisible();
   });
 });

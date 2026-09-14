@@ -40,7 +40,7 @@ describe("PeoplePanelBody", () => {
   it("adds an artist and stays open, clearing the form for the next one", async () => {
     renderWithProviders(<PeoplePanelBody orgId="org-1" artistCount={2} />);
 
-    const nameInput = screen.getByLabelText(/add an artist/i);
+    const nameInput = screen.getByLabelText(/add a new artist/i);
     const emailInput = screen.getByPlaceholderText(/email/i);
     fireEvent.change(nameInput, { target: { value: "Lena Nord" } });
     fireEvent.change(emailInput, { target: { value: "lena@nordstadt.de" } });
