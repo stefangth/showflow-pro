@@ -839,6 +839,10 @@ export function ShowDateDetailSheet({ showDateId, open, onOpenChange, pager, ini
             canOpenSlot: flow.artist_acceptance ? canRunOfferEngine : canManage,
             slotActionLabel: flow.artist_acceptance ? t('showDateSheet.slotActionOpenTier') : t('showDateSheet.slotActionBook'),
             onOpenSlot: () => setActiveTab('offers'),
+            // Vocabulary-resolved headings: production reads "Main cast"/"Understudies",
+            // staffing reads "Main team"/"Standbys" via the org's workspace vocabulary.
+            mainCastTitle: t('showDateSheet.assignedArtists.mainCast'),
+            understudyTitle: t('showDateSheet.assignedArtists.understudies'),
           })
         : [],
     // `i18n.language` forces this to recompute on every real language change.
