@@ -275,6 +275,8 @@ Scoped per decision 2 to the `productions` mini (the only structurally productio
 
 ## Task 9: Help center `byKind` + the "workspace type" answer (R5.3)
 
+**Reframed finding (2026-09-15): no `aByKind` mechanism needed.** `HelpItemRow` (and `HelpGlossary`) already run every answer/question through `interpolateVocabulary` with the org's vocabulary, so PR 2's tokenized items already read "standby"/"team"/"qualification" for a staffing org. With standby kept for both kinds (Task 7 reframe), none of the five candidate items needs a structurally different answer, only the noun swap they already get. So Task 9 shipped just the new cross-role explainer: one admin item `A3.18` ("What does the workspace type change?", Settings then Organization, EN + DE Du-form, written generically so it needs no vocab-lint exemption), and the item count moved 86 to 87. The original `aByKind` scope below is retained for reference only.
+
 **Files:**
 - Modify: `src/lib/help/types.ts` (add optional `aByKind?: Partial<Record<OrgKind, Record<Lang, string>>>` to `HelpItem`, an alternate answer; question stays shared since the nouns already interpolate)
 - Modify: `src/components/help/HelpItemRow.tsx` (when `aByKind[kind]` exists, render it through `interpolateVocabulary` instead of `item.a`; `HelpPage` already knows `orgKind`)
