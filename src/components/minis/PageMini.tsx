@@ -3,15 +3,16 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { isImpersonating } from '@/features/auth/orgRoles';
 import { useLanguage } from '@/features/i18n/LanguageContext';
 import { useVocabulary } from '@/hooks/useVocabulary';
+import { useOrgKind } from '@/hooks/useOrgKind';
 import { useRailDismissed } from '@/components/setup/useRailDismissed';
 import { StatusPill } from '@/components/ui/status-pill';
 import { Metric } from '@/components/ui/metric';
 import { PageMiniCollapsed } from './PageMiniCollapsed';
 import { MINI_CHROME } from './miniChrome';
 import type { Lang } from '@/i18n/config';
-import { interpolateVocabulary, type Vocabulary } from '@/lib/orgKind';
+import { interpolateVocabulary, VOCABULARY, type Vocabulary } from '@/lib/orgKind';
 import { MINIS, resolveMiniRole, type MiniDef, type MiniRole, type RegisteredPageKey } from '@/lib/minis';
-import { ART } from './illustrations';
+import { ART, resolveArt } from './illustrations';
 
 
 const STEP_NUMBERS = ['01', '02', '03', '04'] as const;
@@ -92,6 +93,7 @@ export function PageMini({ page }: { page: RegisteredPageKey }) {
   const { hasRole, isSuperAdmin, roles, viewAsRole, viewAsUser, currentOrg } = useAuth();
   const { lang } = useLanguage();
   const vocab = useVocabulary();
+  const kind = useOrgKind();
   const orgId = currentOrg?.id ?? null;
   const [dismissed, dismiss, undismiss] = useRailDismissed(`mini.${page}`, orgId);
 
@@ -107,7 +109,7 @@ export function PageMini({ page }: { page: RegisteredPageKey }) {
       def={def}
       role={role}
       lang={lang}
-      art={ART[page]}
+      art={resolveArt(ART[page], VOCABULARY[kind].en)}
       dismissed={dismissed}
       onHide={dismiss}
       onResume={undismiss}

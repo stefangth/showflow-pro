@@ -5,7 +5,7 @@ import { PageMiniView } from './PageMini';
 import { settingsMini } from '@/lib/minis/pages/settings';
 import { settingsArt } from './illustrations/SettingsMini';
 import { MINIS, PAGE_KEYS, type MiniDef, type MiniRole } from '@/lib/minis';
-import { ART } from './illustrations';
+import { ART, resolveArt } from './illustrations';
 import { VOCABULARY, interpolateVocabulary } from '@/lib/orgKind';
 
 const base = {
@@ -75,7 +75,7 @@ describe('PageMiniView', () => {
     for (const role of Object.keys(def.variants) as MiniRole[]) {
       for (const lang of ['en', 'de'] as const) {
         const { unmount } = renderWithProviders(
-          <PageMiniView def={def} role={role} lang={lang} art={ART[page]} dismissed={false} onHide={() => {}} onResume={() => {}} vocab={VOCABULARY.production[lang]} />,
+          <PageMiniView def={def} role={role} lang={lang} art={resolveArt(ART[page], VOCABULARY.production.en)} dismissed={false} onHide={() => {}} onResume={() => {}} vocab={VOCABULARY.production[lang]} />,
         );
         expect(screen.getByText(interpolateVocabulary(def.eyebrow[lang], VOCABULARY.production[lang]))).toBeInTheDocument();
         unmount();
@@ -85,7 +85,18 @@ describe('PageMiniView', () => {
 
   it('substitutes vocabulary variables in step copy', () => {
     const def = { ...MINIS.artists, eyebrow: { en: 'What {{artists}} are', de: 'Was {{Artists}} sind' } } as MiniDef;
-    render(<PageMiniView def={def} role="admin" lang="en" art={ART.artists} dismissed={false} onHide={() => {}} onResume={() => {}} vocab={VOCABULARY.staffing.en} />);
+    render(<PageMiniView def={def} role="admin" lang="en" art={resolveArt(ART.artists, VOCABULARY.staffing.en)} dismissed={false} onHide={() => {}} onResume={() => {}} vocab={VOCABULARY.staffing.en} />);
     expect(screen.getByText('What people are')).toBeInTheDocument();
+  });
+
+  it('renders illustration domain nouns in the staffing vocabulary', () => {
+    // The illustration factory reads the English kind vocabulary, so a staffing org's
+    // decorative labels swap the workspace-type nouns (skill to qualification) while the
+    // illustration stays English.
+    render(<PageMiniView def={MINIS.artists} role="admin" lang="en" art={resolveArt(ART.artists, VOCABULARY.staffing.en)} dismissed={false} onHide={() => {}} onResume={() => {}} vocab={VOCABULARY.staffing.en} />);
+    expect(screen.getByText('Missing a required qualification')).toBeInTheDocument();
+    // Production keeps the original noun.
+    render(<PageMiniView def={MINIS.artists} role="admin" lang="en" art={resolveArt(ART.artists, VOCABULARY.production.en)} dismissed={false} onHide={() => {}} onResume={() => {}} vocab={VOCABULARY.production.en} />);
+    expect(screen.getByText('Missing a required skill')).toBeInTheDocument();
   });
 });

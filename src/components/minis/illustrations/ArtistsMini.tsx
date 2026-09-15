@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { Vocabulary } from '@/lib/orgKind';
 import { Badge, MiniCard, MiniField, MiniWell, MiniRow, MiniAvatar } from '../atoms';
 
 /**
@@ -7,7 +8,7 @@ import { Badge, MiniCard, MiniField, MiniWell, MiniRow, MiniAvatar } from '../at
  * Token-only likenesses of the real Artists tabs. Copy lives in src/lib/minis;
  * these illustrations are role-invariant.
  */
-export const artistsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
+export const artistsArt = (vocab: Vocabulary): readonly [ReactNode, ReactNode, ReactNode, ReactNode] => [
   // 01 A talent record — identity + booking contact
   <MiniCard key="r1">
     <MiniRow
@@ -30,9 +31,9 @@ export const artistsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] =
       <Badge variant="neutral">Live vocal</Badge>
     </div>
     <div className="flex items-center gap-2">
-      <Badge variant="risk" dot>Missing a required skill</Badge>
+      <Badge variant="risk" dot>{`Missing a required ${vocab.skill}`}</Badge>
     </div>
-    <div className="text-eyebrow text-muted-foreground">No offer until every required skill is held</div>
+    <div className="text-eyebrow text-muted-foreground">{`No offer until every required ${vocab.skill} is held`}</div>
   </MiniCard>,
 
   // 03 Casts — grouping into named tiers

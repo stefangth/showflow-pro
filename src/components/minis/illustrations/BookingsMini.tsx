@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { Vocabulary } from '@/lib/orgKind';
 import { Badge, MiniCard, MiniWell, MiniRow, MiniAvatar, MiniCheck, MiniMeter, MiniWeek, MiniButton } from '../atoms';
 
 /**
@@ -7,7 +8,7 @@ import { Badge, MiniCard, MiniWell, MiniRow, MiniAvatar, MiniCheck, MiniMeter, M
  * Token-only likenesses of the real Shows & Bookings flow. Copy lives in src/lib/minis;
  * these illustrations are role-invariant.
  */
-export const bookingsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
+export const bookingsArt = (vocab: Vocabulary): readonly [ReactNode, ReactNode, ReactNode, ReactNode] => [
   // 01 Tier opens — asks go out to the tier
   <MiniCard key="b1">
     <MiniWell label="Tier 1 · Berlin Principal" trailing="6 asks" />
@@ -67,7 +68,7 @@ export const bookingsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] 
   // 04 Fully filled — places met, contracts drafted
   <MiniCard key="b4">
     <MiniMeter pct={100} label="4/4 main" />
-    <MiniMeter pct={50} label="1/2 understudy" />
-    <MiniWell icon={<MiniCheck />} label="Contracts" trailing="4 drafted" />
+    <MiniMeter pct={50} label={`1/2 ${vocab.understudy}`} />
+    <MiniWell icon={<MiniCheck />} label={vocab.HireOrders} trailing="4 drafted" />
   </MiniCard>,
 ];

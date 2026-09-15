@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { Vocabulary } from '@/lib/orgKind';
 import { Badge, MiniCard, MiniField, MiniRow, MiniAvatar, MiniCheck, MiniButton } from '../atoms';
 import { Token } from '@/components/ui/token';
 import { Metric } from '@/components/ui/metric';
@@ -9,14 +10,14 @@ import { Metric } from '@/components/ui/metric';
  * Token-only likenesses of the real Hire orders surfaces. Copy lives in src/lib/minis;
  * these illustrations are role-invariant.
  */
-export const hireOrdersArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
+export const hireOrdersArt = (vocab: Vocabulary): readonly [ReactNode, ReactNode, ReactNode, ReactNode] => [
   // 01 Draft from booking — the auto-drafted order snapshot
   <MiniCard key="h1">
     <div className="flex items-center justify-between gap-2">
       <Token className="text-eyebrow font-semibold">SF-2026-0724-1</Token>
       <Badge variant="neutral">Draft</Badge>
     </div>
-    <MiniField label="Artist">Theo Brandt</MiniField>
+    <MiniField label={vocab.Artist}>Theo Brandt</MiniField>
     <MiniField label="Fee">
       <Metric>€480.00</Metric> <Badge variant="neutral">Manual</Badge>
     </MiniField>
@@ -53,7 +54,7 @@ export const hireOrdersArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode
     <div className="flex items-start gap-2">
       <MiniCheck />
       <div>
-        <div className="text-caption text-foreground">Opened by artist</div>
+        <div className="text-caption text-foreground">{`Opened by ${vocab.artist}`}</div>
         <Metric className="block text-eyebrow text-muted-foreground/70">22/07 · 18:47</Metric>
       </div>
     </div>
