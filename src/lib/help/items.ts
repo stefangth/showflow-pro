@@ -154,6 +154,14 @@ export const HELP_ITEMS: readonly HelpItem[] = [
     },
   },
   {
+    id: 'A3.18', role: 'admin', stage: 3, status: 'new', surface: 'Settings, Organization', updated: '2026-09-15',
+    q: { en: 'What does the workspace type change?', de: 'Was ändert der Workspace-Typ?' },
+    a: {
+      en: 'It sets the words the app uses for your work. Choosing your type under Settings then Organization swaps the wording across the screens, the emails, and the {{hireOrder}} PDFs to match how you operate, and standby stays available whichever you pick. Switching changes only the words, never your data, and you can switch back at any time.',
+      de: 'Er legt fest, welche Wörter die App für deine Arbeit verwendet. Wenn du deinen Typ unter Einstellungen dann Organisation wählst, ändert sich die Wortwahl auf den Bildschirmen, in den E-Mails und in den {{HireOrder}}-PDFs passend zu deiner Arbeitsweise, und Standby bleibt so oder so verfügbar. Ein Wechsel ändert nur die Wörter, nie deine Daten, und du kannst jederzeit zurückwechseln.',
+    },
+  },
+  {
     id: 'A3.8', role: 'admin', stage: 3, status: 'new', surface: 'Get running board, Get dates in phase', updated: '2026-08-23',
     q: { en: 'Can I import {{showDates}} from a Google Sheet instead of Airtable?', de: 'Kann ich {{ShowDates}} aus einem Google Sheet importieren statt aus Airtable?' },
     a: {
