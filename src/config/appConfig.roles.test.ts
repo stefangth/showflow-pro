@@ -19,6 +19,34 @@ describe("ROLE_DESCRIPTIONS", () => {
   });
 });
 
+describe("roleDescription workspace-type awareness", () => {
+  it("is byte-identical to ROLE_DESCRIPTIONS for the production default", () => {
+    for (const role of ALL_ROLES) {
+      expect(roleDescription(role, "production")).toBe(ROLE_DESCRIPTIONS[role]);
+      expect(roleDescription(role)).toBe(ROLE_DESCRIPTIONS[role]);
+    }
+  });
+
+  it("swaps domain nouns for a staffing workspace", () => {
+    const producer = roleDescription("producer", "staffing");
+    expect(producer).toContain("clients");
+    expect(producer).toContain("people");
+    // "show dates" stays literal here, matching roleIntroProducer (see the template note),
+    // so it is deliberately NOT swapped to "shifts".
+    expect(producer).toContain("show dates");
+    expect(producer).not.toContain("productions");
+    expect(producer).not.toContain("books artists");
+    expect(roleDescription("admin", "staffing")).toContain("teams");
+    expect(roleDescription("artist", "staffing")).toContain("clients");
+  });
+
+  it("stays dash-free for staffing too", () => {
+    for (const role of ALL_ROLES) {
+      expect(roleDescription(role, "staffing")).not.toMatch(/[—–]/);
+    }
+  });
+});
+
 describe("roleDescription", () => {
   it("returns the registry entry for a known role", () => {
     for (const role of ALL_ROLES) {

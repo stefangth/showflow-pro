@@ -489,7 +489,11 @@ export default function AcceptInvitePage() {
     // orgs/memberships resolutions degrade gracefully (org name falls back to a generic
     // phrase, role block is omitted) in case refreshOrgs came back short. `role` itself is
     // resolved above, before this component's hooks, so it can gate them.
-    const orgName = orgs.find((o) => o.id === joined.orgId)?.name ?? t('acceptInvite.success.orgFallback');
+    const joinedOrg = orgs.find((o) => o.id === joined.orgId);
+    const orgName = joinedOrg?.name ?? t('acceptInvite.success.orgFallback');
+    // The role label and description read in the JOINED org's workspace vocabulary (a staffing
+    // invitee sees "Booking team" and the staffing sentence), not the viewer's active-org kind.
+    const joinedKind = joinedOrg?.org_kind;
     const bookingState = resolveBookingRunState(bookingModuleOn, bookingFlow);
     const boardRole = role === 'admin' || role === 'producer';
     // A board-role stays on the board path unless the board has loaded and turned out empty
@@ -537,8 +541,8 @@ export default function AcceptInvitePage() {
               // a fragment missing its subject. A label-plus-caption pairing (the same
               // shape PersonRow uses for the same registry) needs no shared subject.
               <div className="rounded-control border border-border bg-well-tint p-3 text-left space-y-1">
-                <p className="text-sm font-medium text-foreground">{t('acceptInvite.success.yourRole', { role: roleLabel(role) })}</p>
-                <p className="text-sm text-muted-foreground">{roleDescription(role)}</p>
+                <p className="text-sm font-medium text-foreground">{t('acceptInvite.success.yourRole', { role: roleLabel(role, joinedKind) })}</p>
+                <p className="text-sm text-muted-foreground">{roleDescription(role, joinedKind)}</p>
               </div>
             )}
             {!joined.artistLinked && (

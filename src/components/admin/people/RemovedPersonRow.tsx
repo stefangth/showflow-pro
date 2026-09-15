@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { Undo2, UserMinus } from "lucide-react";
 import { roleLabel } from "@/config/app.config";
+import { useOrgKind } from "@/hooks/useOrgKind";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ export interface RemovedPersonRowProps {
  */
 export function RemovedPersonRow({ member, onUndo, onClear, onDelete, undoPending = false }: RemovedPersonRowProps) {
   const { t } = useTranslation("admin");
+  const kind = useOrgKind();
   const who = member.display_name || member.email || member.user_id;
   const removed = format(new Date(member.removed_at), "dd/MM/yyyy");
   const by = member.removed_by_name ? t("removedRow.by", { name: member.removed_by_name }) : "";
@@ -45,7 +47,7 @@ export function RemovedPersonRow({ member, onUndo, onClear, onDelete, undoPendin
         <div className="hidden sm:flex sm:w-44 sm:justify-end">
           {member.roles.map((r) => (
             <Badge key={r} variant="outline" className="border-border/60 font-normal text-muted-foreground">
-              {t("removedRow.was", { role: roleLabel(r) })}
+              {t("removedRow.was", { role: roleLabel(r, kind) })}
             </Badge>
           ))}
         </div>

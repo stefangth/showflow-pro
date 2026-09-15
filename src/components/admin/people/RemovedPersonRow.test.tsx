@@ -1,7 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { screen, fireEvent } from "@testing-library/react";
-import { renderWithProviders } from "@/test/renderWithProviders";
+import { renderWithProviders as renderRaw } from "@/test/renderWithProviders";
 import { RemovedPersonRow } from "./RemovedPersonRow";
+
+// RemovedPersonRow reads the active org's workspace type via useOrgKind (kind-aware role
+// labels), which needs an AuthProvider. Default (empty) overrides give a null currentOrg,
+// so useOrgKind resolves to production and the rendered label is unchanged.
+const renderWithProviders = (ui: Parameters<typeof renderRaw>[0]) => renderRaw(ui, { authOverrides: {} });
 import type { RemovedMember } from "@/data/members";
 
 const base: RemovedMember = {

@@ -551,6 +551,23 @@ describe("AcceptInvitePage success screen", () => {
     expect(screen.getByText(new RegExp(roleDescription("admin")))).toBeInTheDocument();
   });
 
+  it("renders the role in the JOINED org's workspace vocabulary, not the viewer's active-org kind", async () => {
+    // The joined org is staffing while the viewer's active org (currentOrg) stays production.
+    // The success card must read the joined org's vocabulary: "Booking team" and the staffing
+    // role sentence, never "Production Team". (currentOrg is production, proving the label
+    // follows the joined org, not the active one.)
+    const staffingOrg: Organization = { ...org1, org_kind: "staffing" };
+    authState.orgs = [staffingOrg];
+    authState.memberships = [{ org_id: staffingOrg.id, role: "producer", organizations: staffingOrg }];
+    acceptInvitationMock.mockResolvedValueOnce({ orgId: staffingOrg.id, artistLinked: false });
+    renderAt(`${ROUTES.ACCEPT_INVITE}?token=abc123`);
+
+    await screen.findByRole("heading", { name: /you've joined/i });
+    expect(await screen.findByText(/your role: booking team/i)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(roleDescription("producer", "staffing")))).toBeInTheDocument();
+    expect(screen.queryByText(/production team/i)).not.toBeInTheDocument();
+  });
+
   it("resolves the role by a deterministic admin over producer over artist precedence, not membership row order", async () => {
     // An org member can hold more than one role at once (Admin > People "Roles" editor),
     // and fetchMyMemberships returns rows unordered, so index 0 is not safe. Put the

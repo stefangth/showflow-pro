@@ -1,7 +1,9 @@
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { Copy, X, RefreshCw, Mail, Settings as SettingsIcon } from "lucide-react";
-import { type AppRole, roleLabel, ROLE_DESCRIPTIONS } from "@/config/app.config";
+import { type AppRole, roleLabel, roleDescription } from "@/config/app.config";
+import { useOrgKind } from "@/hooks/useOrgKind";
+import type { OrgKind } from "@/lib/orgKind";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -38,12 +40,12 @@ function initials(name: string): string {
  * column (always an element so the column is held even with no roles) so the role badges form one
  * vertical band down the whole directory, across both subgroups.
  */
-function RoleBadges({ roles }: { roles: AppRole[] }) {
+function RoleBadges({ roles, kind }: { roles: AppRole[]; kind: OrgKind }) {
   if (roles.length === 0) return <div className="hidden sm:block sm:w-44" aria-hidden />;
   return (
     <div className="flex flex-wrap items-center gap-1 sm:w-44 sm:justify-end">
       {roles.map((r) => (
-        <Badge key={r} variant="secondary" className="border-border/60 font-normal">{roleLabel(r)}</Badge>
+        <Badge key={r} variant="secondary" className="border-border/60 font-normal">{roleLabel(r, kind)}</Badge>
       ))}
     </div>
   );
@@ -65,6 +67,7 @@ export function PersonRow({
   resendPending = false, revokePending = false, setRolePending = false,
 }: PersonRowProps) {
   const { t } = useTranslation("admin");
+  const kind = useOrgKind();
   const invited = person.status === "invited";
   const inv = person.invitation;
   const hasName = Boolean(person.displayName);
@@ -112,7 +115,7 @@ export function PersonRow({
 
       {/* Roles + actions — wraps under identity on mobile, fixed columns on ≥sm */}
       <div className="flex flex-wrap items-center gap-2 pl-12 sm:flex-nowrap sm:justify-end sm:pl-0">
-        <RoleBadges roles={person.roles} />
+        <RoleBadges roles={person.roles} kind={kind} />
 
         {invited && inv ? (
           <div className="flex items-center justify-end gap-1 sm:w-40">
@@ -163,8 +166,8 @@ export function PersonRow({
                         className="items-start"
                       >
                         <div className="flex flex-col gap-0.5">
-                          <span>{roleLabel(r)}</span>
-                          <span className="text-xs text-muted-foreground">{ROLE_DESCRIPTIONS[r]}</span>
+                          <span>{roleLabel(r, kind)}</span>
+                          <span className="text-xs text-muted-foreground">{roleDescription(r, kind)}</span>
                         </div>
                       </DropdownMenuCheckboxItem>
                     );

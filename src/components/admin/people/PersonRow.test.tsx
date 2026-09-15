@@ -1,7 +1,13 @@
 import { screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { renderWithProviders } from "@/test/renderWithProviders";
+import { renderWithProviders as renderRaw } from "@/test/renderWithProviders";
 import { roleLabel, ROLE_DESCRIPTIONS } from "@/config/app.config";
+
+// PersonRow reads the active org's workspace type via useOrgKind (for kind-aware role
+// labels/descriptions), which needs an AuthProvider. Default (empty) overrides give a
+// null currentOrg, so useOrgKind resolves to production and the rendered role copy is
+// byte-identical to the pre-workspace-type behaviour these assertions pin.
+const renderWithProviders = (ui: Parameters<typeof renderRaw>[0]) => renderRaw(ui, { authOverrides: {} });
 import { ROLE_OPTIONS } from "./roleOptions";
 import { PersonRow } from "./PersonRow";
 import type { Person } from "./peopleMatch";

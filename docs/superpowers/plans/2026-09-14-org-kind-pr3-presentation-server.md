@@ -247,6 +247,8 @@ The owner's standing rule: mock up user-facing changes and get explicit approval
 
 ## Task 8: Page-mini `byKind` variant (R5.2)
 
+**Reframed finding (2026-09-14):** with standby kept for both kinds (Task 7 reframe), no `byKind` structural variant is needed. The `productions` mini's explanatory text already interpolates `{{understudy}}`/`{{understudies}}` (PR 2), so it swaps to "standby"/"standbys" for staffing with zero work. The only non-swapping remnant is the decorative *illustration* labels ("Understudy", "Main cast") in `ProductionsMini.tsx`/`BookingsMini.tsx`: those are static `ReactNode`s in a shared `ART` layer (`illustrations/index.ts`) that by design receives no vocabulary and is uniformly production-flavored across all eight page minis ("Program", proper-noun show names, casts). Vocabularizing that layer is a separate cross-cutting refactor (every illustration file plus the `ART`/`PageMiniView` plumbing), disproportionate to the standby feature and not coherent piecemeal. **Decision: deferred to its own follow-up; Task 8 needs no code here.** The original `byKind` scope below is retained for reference only.
+
 Scoped per decision 2 to the `productions` mini (the only structurally production-specific one) plus the decorative understudy labels in the two illustration files.
 
 **Files:**
