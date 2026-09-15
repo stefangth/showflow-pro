@@ -68,6 +68,10 @@
     "usLabel": "$t(bookingCopy:slotsStep.usLabel_{{kind}})",
     "usLabel_production": "ZB",
     "usLabel_staffing": "Ersatz",
+    "mainSlotName": "$t(bookingCopy:slotsStep.mainSlotName_{{kind}})",
+    "mainSlotName_production": "Hauptbesetzung",
+    "mainSlotName_staffing": "Hauptteam",
+    "understudySlotName": "{{Understudy}}",
     "save": "Besetzungsplan speichern",
     "toastSaved": "Besetzungsplan gespeichert",
     "errors": {

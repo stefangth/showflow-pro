@@ -80,6 +80,9 @@ const IDENTICAL_OK: Record<string, string> = {
   'settingsBookingFlow.flowRail.actorSystem': '"System" is identical in German',
   'settingsBookingFlow.flowPresets.names.fasttrack': 'loanword "Autopilot", kept untranslated in German by design',
 
+  // bookingCopy
+  'bookingCopy.slotsStep.understudySlotName': 'whole value is one vocabulary variable, resolved per language by the vocabulary table',
+
   // settingsHireOrders
   'settingsHireOrders.hireOrdersTab.rail.systemActor': '"System" is identical in German',
   'settingsHireOrders.letterheadFields.legalNamePlaceholder': 'example company name (proper noun)',

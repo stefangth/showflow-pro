@@ -55,7 +55,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
           if (mainSlot) {
             mainSlot.count = Number(e.main);
           } else {
-            slots.push({ id: crypto.randomUUID(), name: "Main cast", count: Number(e.main), kind: "main", skillIds: [] });
+            slots.push({ id: crypto.randomUUID(), name: t("slotsStep.mainSlotName"), count: Number(e.main), kind: "main", skillIds: [] });
           }
           // Understudy stays optional: a positive count updates or creates the Understudy
           // slot; a blank or zero leaves any pre-existing understudy slot untouched (it is
@@ -65,7 +65,7 @@ export function SlotsStep({ orgId, onDone }: { orgId: string | null; onDone: () 
             if (usSlot) {
               usSlot.count = Number(e.us);
             } else {
-              slots.push({ id: crypto.randomUUID(), name: "Understudy", count: Number(e.us), kind: "understudy", skillIds: [] });
+              slots.push({ id: crypto.randomUUID(), name: t("slotsStep.understudySlotName"), count: Number(e.us), kind: "understudy", skillIds: [] });
             }
           }
           return saveShowSlots(supabase, { showId: e.id, orgId, slots });

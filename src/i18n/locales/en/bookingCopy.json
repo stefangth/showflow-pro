@@ -50,6 +50,8 @@
     "usLabel": "$t(bookingCopy:slotsStep.usLabel_{{kind}})",
     "usLabel_production": "u/s",
     "usLabel_staffing": "standby",
+    "mainSlotName": "Main {{cast}}",
+    "understudySlotName": "{{Understudy}}",
     "save": "Save casting breakdown",
     "toastSaved": "Casting breakdown saved",
     "errors": {
