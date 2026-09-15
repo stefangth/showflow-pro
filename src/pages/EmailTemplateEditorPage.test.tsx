@@ -96,6 +96,15 @@ describe("EmailTemplateEditorPage", () => {
     },
   );
 
+  it("shows the workspace-type preview toggle even without variants or language packs", async () => {
+    // Regression: the toggle used to sit inside the toolbar gated on
+    // `variants || languagePacksEnabled`. offer-immediate has no previewVariants and
+    // language_packages is off by default, so the toggle was unreachable. It is not
+    // entitlement-gated, so the toolbar (and the toggle) must render regardless.
+    renderPage("offer-immediate");
+    expect(await screen.findByRole("group", { name: /workspace type/i })).toBeInTheDocument();
+  });
+
   it("seeds legacy copy only when the new email_copy setting is absent", async () => {
     seedClient(settingRows(undefined, {}, { "org-invitation": { subject: "Legacy subject" } }));
     const first = renderPage();

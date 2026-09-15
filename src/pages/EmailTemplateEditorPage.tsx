@@ -191,7 +191,10 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
         />
       }
       preview={
-        variants || languagePacksEnabled ? (
+        // The toolbar always renders because the workspace-type toggle always applies
+        // (not entitlement-gated). The variants sub-group and the language sub-group keep
+        // their own gates below.
+        (
           <div className="flex h-full flex-col">
             <div className="flex flex-wrap items-center gap-1 border-b border-border bg-background px-3 py-2">
               {variants && (
@@ -248,8 +251,6 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
               <EmailPreviewPane {...previewInput} />
             </div>
           </div>
-        ) : (
-          <EmailPreviewPane {...previewInput} />
         )
       }
       inspector={
