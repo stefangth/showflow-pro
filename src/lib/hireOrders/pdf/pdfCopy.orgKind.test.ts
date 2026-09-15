@@ -48,6 +48,22 @@ describe("resolveHireOrderCopy org_kind vocabulary", () => {
     expect(de.party_cast_reference).toBe("Team: {{castRef}}");
   });
 
+  it("keeps the German artist party label and signature grammatical for staffing", () => {
+    // German gender: staffing Artist is "Teammitglied" (neuter), so tokenizing
+    // "der {{Artist}}" would render the ungrammatical "der Teammitglied". These two keys
+    // stay at the production German noun (grammatical) for both kinds, the same tradeoff as
+    // party_producer_label; English swaps freely because it has no gender agreement.
+    const de = resolveHireOrderCopy(undefined, "de", VOCABULARY.staffing.de);
+    expect(de.party_artist_label).toBe("Engagierter Artist, der Artist");
+    expect(de.party_artist_label).not.toContain("Teammitglied");
+    expect(de.signature_for_artist).toBe("Der Artist · {{artistName}}");
+    // Production German is unchanged (byte-identical), and English still swaps.
+    expect(resolveHireOrderCopy(undefined, "de").party_artist_label).toBe("Engagierter Artist, der Artist");
+    expect(resolveHireOrderCopy(undefined, "en", VOCABULARY.staffing.en).party_artist_label).toBe(
+      "Engaged staff member, the Staff member",
+    );
+  });
+
   it("swaps the hire-order noun in the header, title and certificate lead", () => {
     // Production keeps the reconciled clean prose (byte-identical to the defaults).
     const enProd = resolveHireOrderCopy(undefined, "en");

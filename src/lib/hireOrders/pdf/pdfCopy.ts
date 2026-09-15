@@ -304,9 +304,15 @@ const HIRE_ORDER_COPY_VOCAB_TEMPLATES: Record<"en" | "de", Partial<Record<CopyKe
     header_eyebrow: "{{HireOrder}}",
     title_lead: "Dieser {{HireOrder}} bestätigt das Engagement von",
     cert_lead: "Datensatz zur elektronischen Signatur für {{HireOrder}} {{orderNo}}.",
-    party_artist_label: "Engagierter {{Artist}}, der {{Artist}}",
+    // party_artist_label and signature_for_artist are deliberately NOT tokenized in German.
+    // They carry gender agreement ("Engagierter ... der ...", "Der ...") that is correct for
+    // the masculine production noun "Artist" (der Artist) but wrong for staffing's neuter
+    // "Teammitglied" (das Teammitglied) — a plain {{noun}} substitution cannot re-agree the
+    // article/adjective. So they stay at the clean DE default (production noun, grammatical)
+    // for both kinds, the same tradeoff as party_producer_label. English has no such
+    // agreement, so its templates above still swap. title_lead is safe: {{HireOrder}} is
+    // masculine in both kinds (der Engagementvertrag / der Arbeitsauftrag).
     party_cast_reference: "{{Cast}}: {{castRef}}",
-    signature_for_artist: "Der {{Artist}} · {{artistName}}",
   },
 };
 
