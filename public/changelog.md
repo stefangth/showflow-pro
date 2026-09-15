@@ -2,6 +2,13 @@
 
 What's new in ShowFlow, newest first.
 
+## 1.18.0 — September 15, 2026
+
+*Say it in your own words*
+
+### New
+- **Workspace type** — Choose Live production or staffing agency in Settings, Organization. The app then uses the words that fit your work, productions and dates or clients and shifts, across the screens, emails, and PDFs. Nothing about your data changes, and you can switch any time.
+
 ## 1.17.3 — September 11, 2026
 
 *Offers close on time, every hour*
