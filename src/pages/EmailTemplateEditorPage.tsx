@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmailPreviewPane } from "@/components/settings/emailTemplates/EmailPreviewPane";
 import { useFeature } from "@/hooks/useEntitlements";
+import { useOrgKind } from "@/hooks/useOrgKind";
+import { ORG_KINDS, ORG_KIND_LABELS, type OrgKind } from "@/lib/orgKind";
 import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS } from "@/i18n/config";
 import type { ServerLocale } from "@/lib/i18n/orgLanguage";
 import {
@@ -90,6 +92,12 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
   // turning the workspace language on.
   const languagePacksEnabled = useFeature("language_packages");
   const [previewLocale, setPreviewLocale] = useState<ServerLocale>("en");
+  // Workspace-type preview toggle (admin QA): defaults to the org's kind so the preview
+  // matches what a real send produces, but lets an admin see the other vocabulary without
+  // switching the org. Not entitlement-gated (workspace type is not a paid module).
+  const orgKind = useOrgKind();
+  const [previewKind, setPreviewKind] = useState<OrgKind>(orgKind);
+  const kindLang: "en" | "de" = i18n.language.startsWith("de") ? "de" : "en";
 
   const save = useMutation({
     mutationFn: async () => {
@@ -119,7 +127,8 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
     // preview when the SELECTION changes, not on every render.
     dataOverride: activeVariant?.data,
     locale: previewLocale,
-  }), [activeVariant, copyDraft, previewLocale, selected, template.templateKey, themeDraft]);
+    kind: previewKind,
+  }), [activeVariant, copyDraft, previewKind, previewLocale, selected, template.templateKey, themeDraft]);
 
   if (settingsQuery.isLoading) return <Skeleton className="h-[80vh] w-full" />;
   if (settingsQuery.isError) {
@@ -202,8 +211,23 @@ function EmailTemplateEditorWorkspace({ template, orgId, readOnly }: WorkspacePr
                   ))}
                 </div>
               )}
+              <div role="group" aria-label={t("emailTemplateEditorPage.previewKindGroup")} className="ml-auto flex items-center gap-1">
+                <span className="mr-1 text-xs text-muted-foreground">{t("emailTemplateEditorPage.previewKindLabel")}</span>
+                {ORG_KINDS.map((code) => (
+                  <Button
+                    key={code}
+                    type="button"
+                    size="sm"
+                    variant={code === previewKind ? "secondary" : "outline"}
+                    aria-pressed={code === previewKind}
+                    onClick={() => setPreviewKind(code)}
+                  >
+                    {ORG_KIND_LABELS[code][kindLang].title}
+                  </Button>
+                ))}
+              </div>
               {languagePacksEnabled && (
-                <div role="group" aria-label={t("emailTemplateEditorPage.previewLanguageGroup")} className="ml-auto flex items-center gap-1">
+                <div role="group" aria-label={t("emailTemplateEditorPage.previewLanguageGroup")} className="flex items-center gap-1">
                   <span className="mr-1 text-xs text-muted-foreground">{t("emailTemplateEditorPage.previewLanguageLabel")}</span>
                   {SUPPORTED_LANGUAGES.map((code) => (
                     <Button

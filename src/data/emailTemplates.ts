@@ -24,6 +24,9 @@ export interface EmailTemplatePreviewRequest {
   /** Preview language. The preview endpoint is NOT entitlement-gated (admin QA), so
    *  this lets an admin preview German before enabling it for the org. */
   locale?: "en" | "de";
+  /** Preview workspace type (admin QA). Lets an admin see staffing wording without
+   *  switching the org; the preview endpoint coerces it (defaulting to production). */
+  kind?: "production" | "staffing";
 }
 
 /**

@@ -73,6 +73,22 @@ describe("EmailPreviewPane", () => {
     });
   });
 
+  it("forwards the workspace-type kind to the preview request", async () => {
+    render(<EmailPreviewPane {...props("A")} kind="staffing" />);
+    await act(async () => vi.advanceTimersByTimeAsync(DEBOUNCE_MS));
+    expect(client.calls).toContainEqual({
+      table: "fn:preview-transactional-email",
+      method: "invoke",
+      args: [{
+        templateName: "org-invitation",
+        copyOverride: { "org-invitation.subject": "A" },
+        themeOverride: { roles: { heading: { weight: 700 } } },
+        highlightRole: "heading",
+        kind: "staffing",
+      }],
+    });
+  });
+
   it("keeps the previous frame while the next request is unresolved", async () => {
     const { rerender } = render(<EmailPreviewPane {...props("A")} />);
     await act(async () => vi.advanceTimersByTimeAsync(DEBOUNCE_MS));

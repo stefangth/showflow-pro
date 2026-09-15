@@ -109,6 +109,8 @@
     "previewAsGroup": "Preview as",
     "previewAsLabel": "Preview as",
     "previewLanguageGroup": "Preview language",
-    "previewLanguageLabel": "Language"
+    "previewLanguageLabel": "Language",
+    "previewKindGroup": "Preview workspace type",
+    "previewKindLabel": "Workspace type"
   }
 }
