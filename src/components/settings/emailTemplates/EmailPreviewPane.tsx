@@ -18,6 +18,8 @@ export interface EmailPreviewPaneProps {
   dataOverride?: Record<string, unknown>;
   /** Preview language (default English). */
   locale?: "en" | "de";
+  /** Preview workspace type (default production), so an admin can see staffing wording. */
+  kind?: "production" | "staffing";
 }
 
 /** Debounced edge-rendered preview with stale-run and unmount protection. */
@@ -28,6 +30,7 @@ export function EmailPreviewPane({
   highlightRole,
   dataOverride,
   locale,
+  kind,
 }: EmailPreviewPaneProps) {
   const { t } = useTranslation("settingsEmailTemplates");
   const [html, setHtml] = useState<string | null>(null);
@@ -52,6 +55,7 @@ export function EmailPreviewPane({
           ...(highlightRole ? { highlightRole } : {}),
           ...(dataOverride ? { dataOverride } : {}),
           ...(locale ? { locale } : {}),
+          ...(kind ? { kind } : {}),
         });
         if (id !== runId.current) return;
         setHtml(nextHtml);
@@ -64,7 +68,7 @@ export function EmailPreviewPane({
     }, DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [copyOverride, dataOverride, highlightRole, locale, templateKey, themeOverride]);
+  }, [copyOverride, dataOverride, highlightRole, kind, locale, templateKey, themeOverride]);
 
   useEffect(() => () => {
     runId.current += 1;

@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/features/auth/AuthContext";
+import { useOrgKind } from "@/hooks/useOrgKind";
+import { VOCABULARY } from "@/lib/orgKind";
 import { useCan } from "@/hooks/useCapabilities";
 import { useDerivedDraft } from "@/hooks/useDerivedDraft";
 import { resolveOrgSetting, upsertOrgSetting } from "@/data/settings";
@@ -126,7 +128,11 @@ function TemplateEditorWorkspace({ orgId, readOnly }: { orgId: string | null; re
   const [themeDraft, setThemeDraft] = useDerivedDraft<HireOrderThemeOverride>(themeQuery.data, THEME_DEFAULT);
   const [selected, setSelected] = useState<RoleKey | "document">("document");
 
-  const copy = useMemo(() => resolveHireOrderCopy(copyDraft), [copyDraft]);
+  // Preview in the org's workspace vocabulary (English forms, matching the editor's
+  // English preview) so a staffing org's template preview reads "work order"/"Standby"
+  // like the issued PDF, instead of the production defaults.
+  const orgKind = useOrgKind();
+  const copy = useMemo(() => resolveHireOrderCopy(copyDraft, "en", VOCABULARY[orgKind].en), [copyDraft, orgKind]);
   const theme = useMemo(() => resolveHireOrderTheme(themeDraft), [themeDraft]);
   // The org's default terms template, which is what an order with no explicit
   // variant renders (the same `resolveTermsClauses(setting, null)` the server
