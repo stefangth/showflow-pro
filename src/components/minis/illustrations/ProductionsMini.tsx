@@ -1,13 +1,15 @@
 import type { ReactNode } from 'react';
+import type { Vocabulary } from '@/lib/orgKind';
 import { Badge, MiniCard, MiniField, MiniWell, MiniRow, MiniMeter } from '../atoms';
 
 /**
  * The four Productions-mini illustrations, in step order:
  *   A show · Its dates · Slots per show · Synced dates
  * Token-only likenesses of the real Productions catalog. Copy lives in src/lib/minis;
- * these illustrations are role-invariant.
+ * these illustrations are role-invariant; domain nouns read in the org's (English)
+ * workspace-type vocabulary.
  */
-export const productionsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
+export const productionsArt = (vocab: Vocabulary): readonly [ReactNode, ReactNode, ReactNode, ReactNode] => [
   // 01 A show — the program / sub-program / status
   <MiniCard key="p1">
     <MiniField label="Program">Nachtlicht</MiniField>
@@ -26,8 +28,8 @@ export const productionsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNod
 
   // 03 Slots per show — main cast / understudy / confirmed fill
   <MiniCard key="p3">
-    <MiniField label="Main cast">4</MiniField>
-    <MiniField label="Understudy">2</MiniField>
+    <MiniField label={`Main ${vocab.cast}`}>4</MiniField>
+    <MiniField label={vocab.Understudy}>2</MiniField>
     <MiniMeter pct={75} label="3/4 confirmed" />
   </MiniCard>,
 

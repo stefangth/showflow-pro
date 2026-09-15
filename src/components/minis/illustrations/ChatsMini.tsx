@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { Vocabulary } from '@/lib/orgKind';
 import { Badge, MiniCard, MiniRow, MiniAvatar, MiniWell } from '../atoms';
 
 /**
@@ -7,7 +8,7 @@ import { Badge, MiniCard, MiniRow, MiniAvatar, MiniWell } from '../atoms';
  * Token-only likenesses of the real Chats surfaces. Copy lives in src/lib/minis;
  * these illustrations are role-invariant.
  */
-export const chatsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
+export const chatsArt = (vocab: Vocabulary): readonly [ReactNode, ReactNode, ReactNode, ReactNode] => [
   // 01 One thread per date — a thread list with status badges
   <MiniCard key="c1">
     <MiniRow
@@ -36,7 +37,7 @@ export const chatsArt: readonly [ReactNode, ReactNode, ReactNode, ReactNode] = [
       <span className="inline-flex h-[22px] items-center rounded-full bg-well-tint px-2 text-eyebrow font-medium text-muted-foreground">+2</span>
     </div>
     <div className="text-eyebrow text-muted-foreground">Admins and producers see every thread</div>
-    <div className="text-eyebrow text-muted-foreground">Artists join once booked or once they say yes</div>
+    <div className="text-eyebrow text-muted-foreground">{`${vocab.Artists} join once booked or once they say yes`}</div>
   </MiniCard>,
 
   // 03 Talk about the date — outgoing and incoming chat bubbles
