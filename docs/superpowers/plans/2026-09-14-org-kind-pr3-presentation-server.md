@@ -357,9 +357,10 @@ Per CLAUDE.md: MINOR bump for a new user-facing feature. Current version `1.17.3
 **Files:**
 - Modify: `e2e/org-kind.spec.ts`
 
-- [ ] **Step 1: Add a scenario** that, with an org set to staffing, opens a show-date cockpit and asserts the standby cast group renders with the staffing word ("Standbys", not "Understudies") and the book-as-standby control reads the staffing word, then switches the org back to production and asserts "Understudy"/"Understudies" return. Keep it one focused scenario; the settings-switch/nav-words scenario from PR 1 already covers vocabulary.
+**Deferred (2026-09-15), with reasoning.** The existing `org-kind.spec.ts` already validates the staffing vocabulary swap end-to-end (switch to staffing in Settings, then assert the sidebar reads "Shifts"/"People" and not "Artists"/"Dates", and switch back). A dedicated cockpit-standby scenario would need a seeded show_date with understudy slots plus fragile cockpit navigation (Shows and Bookings, open a date, Cast tab, find the standby group heading), and the local Playwright + Supabase stack is not runnable in this working environment, so it could not be validated before pushing; shipping an unvalidated, selector-heavy e2e risks a flaky CI job. The cockpit standby wording is instead covered at the unit layer: `cockpitCast.test.ts` (the group titles come from vocabulary-resolved `opts`), `PageMini.test.tsx` (illustration nouns swap), and `standbyLabels.test.ts` (the pill and slot short labels). Net: the staffing presentation is covered end-to-end for vocabulary and unit-covered for the cockpit standby word. Revisit a cockpit e2e when it can be authored against a live local stack.
 
-- [ ] **Step 2: Run** `npx playwright test --config=e2e/playwright.config.ts org-kind` against the local stack (`npm run local:up`). Commit `add staffing presentation e2e smoke`.
+- [ ] ~~Step 1: Add a cockpit standby scenario~~ (deferred, see above).
+- [ ] ~~Step 2: Run against the local stack~~ (deferred).
 
 ---
 
@@ -369,7 +370,7 @@ Per CLAUDE.md: MINOR bump for a new user-facing feature. Current version `1.17.3
 - Modify: `docs/superpowers/specs/2026-09-14-org-kind-workspace-type-design.md` (record the four deviations from "Open decisions" as resolved notes, same way PR 2 wrote its deviations back)
 - Modify: `memory.md` (add a Recent changes row and correct the stale `1.15.0` to the current version; note PR 1 to PR 3 landed)
 
-- [ ] **Step 1: Write the deviations into the spec** so the spec and the code agree: R5.1 reframed (standby kept for both workspace types and vocabulary-worded, not hidden, per owner decision 2026-09-14; only the residual hardcoded labels were tokenized, PR 2 having tokenized the rest); R5.2 minis scoped to `productions`; R5.4 sample data dropped (orphaned dead code, unreachable including by demo orgs); R5.5 `roleDescription` kind-aware and wired at its live render sites (AcceptInvitePage + People pane); the PDF runtime-token rename in R6.
+- [ ] **Step 1: Write the deviations into the spec** so the spec and the code agree: R5.1 reframed (standby kept for both workspace types and vocabulary-worded, not hidden, per owner decision 2026-09-14; the residual hardcoded labels tokenized: cockpit group titles, the calendar standby pill and slot short label made kind-varying in both languages, and the stored SlotsStep slot names localized); R5.2 minis illustrations vocabularized in-PR via `ArtEntry`/`resolveArt` on the English kind table (owner decision 2026-09-15), no `byKind` needed since the mini text was already tokenized; R5.3 no `aByKind` needed (HelpItemRow interpolates), just the new `A3.18` workspace-type explainer; R5.4 sample data dropped (orphaned dead code, unreachable including by demo orgs); R5.5 `roleDescription` kind-aware and wired at its live render sites (AcceptInvitePage + People pane); the PDF runtime-token rename in R6; and the cockpit-standby e2e deferred (Task 13) with the staffing vocab swap still covered by the existing e2e plus unit tests.
 
 - [ ] **Step 2: Run the full local gate.** `npm run verify:fast` (lint, typecheck, build, unit+coverage, Deno) and, against the local stack, `npm run verify:full` (adds pgTAP + Playwright). Also `npm run sync:mirrors:check` and all three typecheck projects. Everything green.
 
