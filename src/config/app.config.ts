@@ -210,18 +210,45 @@ export const roleLabel = (role: string, kind: OrgKind = DEFAULT_ORG_KIND): strin
  * hedging it. This matches org-invitation.roleIntroArtist, which never mentioned it
  * either.
  */
-export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
-  admin: 'Full control of this workspace, including people, casts, settings, and every booking.',
-  producer: 'Plans productions and show dates, and books artists into them.',
-  artist: 'Gets booked for productions and sees every confirmed engagement.',
+/** Token templates for the role descriptions. The production vocabulary words equal the
+ *  hardcoded English nouns, so the production resolution (ROLE_DESCRIPTIONS below) is
+ *  byte-identical to the previous literal map; a staffing org reads its own nouns
+ *  ("clients", "shifts", "people", "teams"). Kept as templates so the two workspace types
+ *  cannot drift (appConfig.roles.test.ts pins the production resolution to ROLE_DESCRIPTIONS). */
+const ROLE_DESCRIPTION_TEMPLATES: Record<AppRole, string> = {
+  admin: 'Full control of this workspace, including people, {{casts}}, settings, and every booking.',
+  // "show dates" stays literal, matching org-invitation.roleIntroProducer exactly (the
+  // twin pinned by appConfig.roles.test.ts): production {{showDates}} resolves to "dates",
+  // and both strings deliberately use the fuller phrase, so neither tokenizes it.
+  producer: 'Plans {{productions}} and show dates, and books {{artists}} into them.',
+  artist: 'Gets booked for {{productions}} and sees every confirmed engagement.',
 };
 
-/** One-sentence description of what a role can do. Tolerant of unknown strings
- *  (falls back to an empty string), mirroring roleLabel's fallback semantics so a
- *  future enum value that hasn't been added to the registry yet degrades to "no
- *  second sentence" rather than an undefined-riddled render. */
-export function roleDescription(role: string): string {
-  return ROLE_DESCRIPTIONS[role as keyof typeof ROLE_DESCRIPTIONS] ?? '';
+/** Resolve a role description in the org's workspace vocabulary. English-only by
+ *  convention (like roleLabel). A bare `{{name}}` substitution keeps this file importing
+ *  nothing beyond VOCABULARY, so it stays a clean block mirror. */
+function resolveRoleDescription(role: string, kind: OrgKind): string {
+  const template = ROLE_DESCRIPTION_TEMPLATES[role as keyof typeof ROLE_DESCRIPTION_TEMPLATES];
+  if (!template) return '';
+  const vocab = VOCABULARY[kind].en as Record<string, string>;
+  return template.replace(/\{\{(\w+)\}\}/g, (_m, name) => vocab[name] ?? `{{${name}}}`);
+}
+
+/** Production resolution of every role description, byte-identical to the historical
+ *  literal map. Consumed directly where a caller has no org kind, and pinned by tests as
+ *  the production baseline; prefer roleDescription(role, kind) in kind-aware surfaces. */
+export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
+  admin: resolveRoleDescription('admin', DEFAULT_ORG_KIND),
+  producer: resolveRoleDescription('producer', DEFAULT_ORG_KIND),
+  artist: resolveRoleDescription('artist', DEFAULT_ORG_KIND),
+};
+
+/** One-sentence description of what a role can do, in the org's workspace vocabulary.
+ *  Tolerant of unknown strings (falls back to an empty string), mirroring roleLabel's
+ *  fallback semantics so a future enum value that hasn't been added to the registry yet
+ *  degrades to "no second sentence" rather than an undefined-riddled render. */
+export function roleDescription(role: string, kind: OrgKind = DEFAULT_ORG_KIND): string {
+  return resolveRoleDescription(role, kind);
 }
 // <<< ROLE LABELS MIRROR <<<
 

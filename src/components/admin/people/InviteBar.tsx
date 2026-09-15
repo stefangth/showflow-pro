@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth/AuthContext";
 import { type Invitation } from "@/data/invitations";
 import type { OrgMember } from "@/data/members";
 import { type AppRole, roleLabel } from "@/config/app.config";
+import { useOrgKind } from "@/hooks/useOrgKind";
 import { useInvitationMutations } from "@/hooks/useInvitationMutations";
 import { isValidEmail, matchContact } from "./peopleMatch";
 import { ROLE_OPTIONS } from "./roleOptions";
@@ -34,6 +35,7 @@ export interface InviteBarProps {
 /** Inline single invite with live duplicate detection + a bulk-invite entry point. */
 export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendingId = null, dedupeHint = null }: InviteBarProps) {
   const { t } = useTranslation("admin");
+  const kind = useOrgKind();
   const { currentOrg } = useAuth();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AppRole>("artist");
@@ -68,7 +70,7 @@ export function InviteBar({ members, invites, onOpenBulk, onResend, resendPendin
           <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             {ROLE_OPTIONS.map((r) => (
-              <SelectItem key={r} value={r}>{roleLabel(r)}</SelectItem>
+              <SelectItem key={r} value={r}>{roleLabel(r, kind)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
